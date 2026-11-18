@@ -30,6 +30,16 @@ const FILE_ORIGIN: Vector3 = Vector3(0, 0, 0.5)
 # slice 4 the window PIECES fill their openings (and carry
 # their own colliders), so the house no longer blocks them.
 
+# The two exterior doorways stay blocked for now: there is
+# no outside yet (no yard, no exterior leaves — both are
+# Adam's/model work to come), and a physics walker who
+# steps out falls forever. Adam found exactly that on his
+# first walkthrough (2026-11-18). [centre, size]
+const DOORWAY_BLOCKERS: Array = [
+	[Vector3(3.5, 1.25, 4.42), Vector3(0.95, 2.3, 0.2)],
+	[Vector3(3.5, 1.25, -4.42), Vector3(0.85, 2.3, 0.2)],
+]
+
 # Stair ramps: the model's flights are discrete step boxes,
 # which a capsule walker cannot climb. Invisible wedges lie
 # over each flight's nosing line and the walker rides those;
@@ -58,7 +68,22 @@ func _ready() -> void:
 	var inst: Node = packed.instantiate()
 	_bake_node(inst, Transform3D.IDENTITY)
 	inst.queue_free()
+	_add_doorway_blockers()
 	_add_stair_ramps()
+
+func _add_doorway_blockers() -> void:
+	for entry in DOORWAY_BLOCKERS:
+		var e: Array = entry
+		var body := StaticBody3D.new()
+		body.collision_layer = 1
+		body.collision_mask = 0
+		var shape := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = e[1]
+		shape.shape = box
+		body.add_child(shape)
+		body.position = e[0]
+		add_child(body)
 
 func _bake_node(n: Node, parent_xform: Transform3D) -> void:
 	var local: Transform3D = Transform3D.IDENTITY
