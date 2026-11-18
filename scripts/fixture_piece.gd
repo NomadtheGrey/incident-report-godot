@@ -29,9 +29,56 @@ func _ready() -> void:
 	if spec["kind"] == "fan":
 		_light = _make_light(Vector3(0, -0.52, 0), Color(1.0, 0.85, 0.63), 1.6, 8.0)
 		_build_spinner()
-		_find_glow()
+		_find_glow("light_dome")
 	if spec["kind"] == "hood":
 		_light = _make_light(Vector3(0, 1.5, 0.35), Color(1.0, 0.90, 0.72), 1.1, 3.2)
+	if spec["kind"] == "lamp":
+		if file == "floor-lamp":
+			_light = _make_light(Vector3(0, 1.5, 0), Color(1.0, 0.85, 0.63), 1.6, 6.0)
+		if file == "table-lamp":
+			_light = _make_light(Vector3(0, 0.34, 0), Color(1.0, 0.85, 0.63), 1.2, 5.0)
+		_find_glow("shade")
+	if spec["kind"] == "prop":
+		_light = _make_light(spec["light_at"], Color(1.0, 0.85, 0.63), spec["energy"], spec["range"])
+		_build_prop_visual()
+
+# The code-built fixtures: a small emissive mesh where the
+# light lives (the dome, the vanity bar, a hanging bulb).
+func _build_prop_visual() -> void:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.92, 0.90, 0.84)
+	var mi := MeshInstance3D.new()
+	var at: Vector3 = spec["light_at"]
+	match spec["visual"]:
+		"dome":
+			var sphere := SphereMesh.new()
+			sphere.radius = 0.13
+			sphere.height = 0.26
+			mi.mesh = sphere
+			mi.scale = Vector3(1, 0.55, 1)
+			mi.position = at
+		"bar":
+			var bar_box := BoxMesh.new()
+			bar_box.size = Vector3(0.5, 0.06, 0.08)
+			mi.mesh = bar_box
+			mi.position = at
+		"bulb":
+			var bulb_sphere := SphereMesh.new()
+			bulb_sphere.radius = 0.05
+			bulb_sphere.height = 0.1
+			mi.mesh = bulb_sphere
+			mi.position = at
+			var cord := MeshInstance3D.new()
+			var cyl := CylinderMesh.new()
+			cyl.top_radius = 0.008
+			cyl.bottom_radius = 0.008
+			cyl.height = 0.35
+			cord.mesh = cyl
+			cord.position = at + Vector3(0, 0.2, 0)
+			add_child(cord)
+	mi.set_surface_override_material(0, mat)
+	add_child(mi)
+	_glow.append([mi, mat])
 
 func _make_light(at: Vector3, colour: Color, energy: float, range_m: float) -> OmniLight3D:
 	var light := OmniLight3D.new()
@@ -58,10 +105,12 @@ func _build_spinner() -> void:
 	for blade in blades:
 		(blade as Node3D).reparent(_spinner, true)
 
-func _find_glow() -> void:
+func _find_glow(prefix: String) -> void:
+	if _inner == null:
+		return
 	for node in _inner.find_children("", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = node as MeshInstance3D
-		if not mi.name.begins_with("light_dome"):
+		if not mi.name.begins_with(prefix):
 			continue
 		var mat: Material = mi.get_surface_override_material(0)
 		if mat == null and mi.mesh != null:
