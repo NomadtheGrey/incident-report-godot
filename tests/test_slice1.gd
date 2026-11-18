@@ -104,6 +104,18 @@ func _run() -> void:
 	await walk("move_forward", 90)
 	check(player.global_position.x > 2.15, "locked leaf blocks the stair-side approach (x=%.2f)" % player.global_position.x)
 
+	print("T6 the front door does not open onto the void")
+	teleport(Vector3(3.5, 0.35, 3.6), Vector3(0, 0, 1))
+	await walk("move_forward", 120)
+	check(player.global_position.z < 4.25, "blocked at the front doorway (z=%.2f)" % player.global_position.z)
+	check(player.global_position.y > 0.0, "and still on the main floor (y=%.2f)" % player.global_position.y)
+
+	print("T7 the safety net catches a fall")
+	teleport(Vector3(3.5, -13.0, 8.0), Vector3(0, 0, 1))
+	for i in 10:
+		await physics_frame
+	check(player.global_position.y > 2.0, "respawned upstairs (pos=%s)" % str(player.global_position))
+
 	if failures.is_empty():
 		print("SLICE1: ALL PASS")
 	if not failures.is_empty():

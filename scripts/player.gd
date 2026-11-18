@@ -146,6 +146,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func _physics_process(delta: float) -> void:
+	# The safety net: below the basement there is nothing,
+	# and an eternal fall helps nobody (Adam, first
+	# walkthrough). Respawn at the Master Bedroom spawn.
+	if global_position.y < -12.0:
+		global_position = Vector3(4.6, 2.65, 1.6)
+		velocity = Vector3.ZERO
 	var ix: float = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
 	var iz: float = Input.get_action_strength("move_back") - Input.get_action_strength("move_forward")
 	var wish: Vector3 = transform.basis * Vector3(ix, 0, iz)

@@ -29,6 +29,10 @@ func setup(p_spec: Dictionary) -> void:
 	if spec.has("cx"):
 		position = Vector3(spec["cx"], spec["y"], spec["cz"])
 	rotation.y = spec.get("yaw", 0.0)
+	# A wall-leaning prop (the shovel): Godot's rotation
+	# order is YXZ, the same order the React loader set.
+	if spec.has("lean"):
+		rotation.x = spec["lean"]
 
 func _ready() -> void:
 	if file != "":
@@ -38,8 +42,28 @@ func _ready() -> void:
 		var lc: Vector2 = spec["lc"]
 		_inner.position = Vector3(-lc.x * 16.0, 0, -lc.y * 16.0)
 		add_child(_inner)
+		if file == "curio-cabinet":
+			_make_curio_glass()
 	_build_collider()
 	_build_look()
+
+# The curio's door glass ships opaque — a flat panel the
+# good china would never be seen through. Make it real
+# glass, as the React loader did.
+func _make_curio_glass() -> void:
+	for node in _inner.find_children("", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = node as MeshInstance3D
+		for s in range(mi.mesh.get_surface_count()):
+			var mat: Material = mi.get_surface_override_material(s)
+			if mat == null:
+				mat = mi.mesh.surface_get_material(s)
+			if mat == null or mat.resource_name != "screen_glass":
+				continue
+			var dup: StandardMaterial3D = mat.duplicate() as StandardMaterial3D
+			dup.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			dup.albedo_color.a = 0.25
+			dup.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+			mi.set_surface_override_material(s, dup)
 
 func _build_collider() -> void:
 	var boxes: Array = spec.get("boxes", [])

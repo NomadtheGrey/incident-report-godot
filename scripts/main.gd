@@ -10,6 +10,9 @@ extends Node3D
 
 const HouseScript: GDScript = preload("res://scripts/house.gd")
 const HudScript: GDScript = preload("res://scripts/hud.gd")
+const TrimScript: GDScript = preload("res://scripts/trim.gd")
+
+var trim: Trim = null
 
 var player: Player = null
 var door: DoorLeaf = null  # the basement-stairs leaf (kept named for the suites)
@@ -25,6 +28,9 @@ func _ready() -> void:
 	_build_environment()
 	var house: Node3D = HouseScript.new()
 	add_child(house)
+	trim = TrimScript.new()
+	add_child(trim)
+	trim.build(house.get("floor_tris"), house.get("wall_tris"))
 	player = Player.new()
 	player.position = Vector3(4.6, 2.65, 1.6)
 	player.rotation.y = -PI / 2.0  # spawn faces east, as in the React build

@@ -30,6 +30,16 @@ const FILE_ORIGIN: Vector3 = Vector3(0, 0, 0.5)
 # slice 4 the window PIECES fill their openings (and carry
 # their own colliders), so the house no longer blocks them.
 
+# The two exterior doorways stay blocked for now: there is
+# no outside yet (no yard, no exterior leaves — both are
+# Adam's/model work to come), and a physics walker who
+# steps out falls forever. Adam found exactly that on his
+# first walkthrough (2026-11-18). [centre, size]
+const DOORWAY_BLOCKERS: Array = [
+	[Vector3(3.5, 1.25, 4.42), Vector3(0.95, 2.3, 0.2)],
+	[Vector3(3.5, 1.25, -4.42), Vector3(0.85, 2.3, 0.2)],
+]
+
 # Stair ramps: the model's flights are discrete step boxes,
 # which a capsule walker cannot climb. Invisible wedges lie
 # over each flight's nosing line and the walker rides those;
@@ -58,7 +68,22 @@ func _ready() -> void:
 	var inst: Node = packed.instantiate()
 	_bake_node(inst, Transform3D.IDENTITY)
 	inst.queue_free()
+	_add_doorway_blockers()
 	_add_stair_ramps()
+
+func _add_doorway_blockers() -> void:
+	for entry in DOORWAY_BLOCKERS:
+		var e: Array = entry
+		var body := StaticBody3D.new()
+		body.collision_layer = 1
+		body.collision_mask = 0
+		var shape := CollisionShape3D.new()
+		var box := BoxShape3D.new()
+		box.size = e[1]
+		shape.shape = box
+		body.add_child(shape)
+		body.position = e[0]
+		add_child(body)
 
 func _bake_node(n: Node, parent_xform: Transform3D) -> void:
 	var local: Transform3D = Transform3D.IDENTITY
@@ -119,6 +144,14 @@ func _bake_mesh(src: MeshInstance3D, node_xform: Transform3D) -> void:
 # Rule: a vertical triangle no taller than 0.12, sitting in
 # the slab band (y -0.02..0.12) over the shaft, is a lip,
 # not a wall. The visual mesh keeps every triangle.
+# The baked triangles, classified as the React extractor
+# classified them (|normal.y| > 0.5 is a floor, everything
+# else a wall). The trim generator (trim.gd) derives
+# baseboards from these, so a future model export re-trims
+# itself the same way.
+var floor_tris: Array = []
+var wall_tris: Array = []
+
 func _add_collision(mesh: ArrayMesh, mesh_name: String) -> void:
 	var faces := PackedVector3Array()
 	for s in mesh.get_surface_count():
@@ -140,6 +173,7 @@ func _add_collision(mesh: ArrayMesh, mesh_name: String) -> void:
 				a = verts[t * 3]
 				b = verts[t * 3 + 1]
 				c = verts[t * 3 + 2]
+			_collect_tri(a, b, c)
 			if _is_slab_lip(a, b, c):
 				continue
 			faces.append(a)
@@ -157,6 +191,22 @@ func _add_collision(mesh: ArrayMesh, mesh_name: String) -> void:
 	cs.shape = shape
 	body.add_child(cs)
 	add_child(body)
+
+func _collect_tri(a: Vector3, b: Vector3, c: Vector3) -> void:
+	var n: Vector3 = (b - a).cross(c - a)
+	var len: float = n.length()
+	if len < 1e-10:
+		return
+	var tri: Dictionary = {
+		"a": a, "b": b, "c": c,
+		"min_x": minf(a.x, minf(b.x, c.x)), "max_x": maxf(a.x, maxf(b.x, c.x)),
+		"min_y": minf(a.y, minf(b.y, c.y)), "max_y": maxf(a.y, maxf(b.y, c.y)),
+		"min_z": minf(a.z, minf(b.z, c.z)), "max_z": maxf(a.z, maxf(b.z, c.z)),
+	}
+	if absf(n.y / len) > 0.5:
+		floor_tris.append(tri)
+		return
+	wall_tris.append(tri)
 
 func _is_slab_lip(a: Vector3, b: Vector3, c: Vector3) -> bool:
 	var min_y: float = minf(a.y, minf(b.y, c.y))
