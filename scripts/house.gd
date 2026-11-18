@@ -30,6 +30,26 @@ const FILE_ORIGIN: Vector3 = Vector3(0, 0, 0.5)
 # slice 4 the window PIECES fill their openings (and carry
 # their own colliders), so the house no longer blocks them.
 
+# The window OPENINGS were never cut in Adam's model — the
+# Window1-4 blocks mark where the units go, but the walls
+# behind them are solid, so the glass read as a painted panel
+# (Adam's playtest, 2026-11-18: "window glass is opaque" —
+# proven here by a ray that hits ExteriorWalls at the
+# opening's centre, and a render with the unit hidden: a
+# flat, unbroken wall). The bake cuts the four openings
+# itself: any baked triangle crossing a cut box is clipped
+# against the box and its inside part dropped — the same
+# bake-corrects-the-model shape as the slab-lip rule below.
+# The cut sits inside the unit's frame on every side, so
+# the frame hides the cut edge. If Adam cuts the openings
+# in Blockbench later, there is simply nothing left to clip.
+const WINDOW_CUTS: Array = [
+	AABB(Vector3(-6.05, 1.11, -2.99), Vector3(0.35, 0.95, 1.98)),
+	AABB(Vector3(-6.05, 1.11, 1.51), Vector3(0.35, 0.95, 1.98)),
+	AABB(Vector3(-2.49, 1.11, 4.24), Vector3(1.98, 0.95, 0.35)),
+	AABB(Vector3(5.70, 1.11, 1.51), Vector3(0.35, 0.95, 1.98)),
+]
+
 # The two exterior doorways stay blocked for now: there is
 # no outside yet (no yard, no exterior leaves — both are
 # Adam's/model work to come), and a physics walker who
@@ -119,6 +139,7 @@ func _bake_mesh(src: MeshInstance3D, node_xform: Transform3D) -> void:
 		arrays[Mesh.ARRAY_NORMAL] = normals
 		if flip:
 			_flip_winding(arrays, src.name)
+		arrays = _cut_openings(arrays)
 		baked.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 		var mat: Material = src_mesh.surface_get_material(s)
 		if mat is BaseMaterial3D:
@@ -131,6 +152,158 @@ func _bake_mesh(src: MeshInstance3D, node_xform: Transform3D) -> void:
 	mi.mesh = baked
 	add_child(mi)
 	_add_collision(baked, src.name)
+
+# --- The window-opening cut ---------------------------------
+# A vertex record is [position, normal, uv, colour]; edge
+# crossings lerp all four (the model's faces are flat, so a
+# fragment keeps its parent triangle's normal honestly).
+
+func _cut_openings(arrays: Array) -> Array:
+	var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	if verts.is_empty():
+		return arrays
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var raw_uv: Variant = arrays[Mesh.ARRAY_TEX_UV]
+	var uvs: PackedVector2Array = raw_uv if raw_uv != null else PackedVector2Array()
+	var raw_c: Variant = arrays[Mesh.ARRAY_COLOR]
+	var colors: PackedColorArray = raw_c if raw_c != null else PackedColorArray()
+	var raw_i: Variant = arrays[Mesh.ARRAY_INDEX]
+	var index: PackedInt32Array = raw_i if raw_i != null else PackedInt32Array()
+	var tris: Array = []
+	if index.size() >= 3:
+		var i: int = 0
+		while i + 2 < index.size():
+			tris.append([index[i], index[i + 1], index[i + 2]])
+			i += 3
+	else:
+		var j: int = 0
+		while j + 2 < verts.size():
+			tris.append([j, j + 1, j + 2])
+			j += 3
+	var out_v: PackedVector3Array = []
+	var out_n: PackedVector3Array = []
+	var out_uv: PackedVector2Array = []
+	var out_c: PackedColorArray = []
+	var changed: bool = false
+	for t in tris:
+		var poly: Array = []
+		for k in 3:
+			var idx: int = t[k]
+			poly.append([
+				verts[idx],
+				normals[idx] if idx < normals.size() else Vector3.UP,
+				uvs[idx] if idx < uvs.size() else Vector2.ZERO,
+				colors[idx] if idx < colors.size() else Color.WHITE,
+			])
+		var pieces: Array = [poly]
+		for box in WINDOW_CUTS:
+			if not _poly_touches(poly, box):
+				continue
+			changed = true
+			var next: Array = []
+			for piece in pieces:
+				next.append_array(_subtract_box(piece, box))
+			pieces = next
+			if pieces.is_empty():
+				break
+		for piece in pieces:
+			for f in range(1, piece.size() - 1):
+				for rec in [piece[0], piece[f], piece[f + 1]]:
+					out_v.append(rec[0])
+					out_n.append(rec[1])
+					out_uv.append(rec[2])
+					out_c.append(rec[3])
+	if not changed:
+		return arrays
+	arrays[Mesh.ARRAY_VERTEX] = out_v
+	if normals.size() > 0:
+		arrays[Mesh.ARRAY_NORMAL] = out_n
+	if uvs.size() > 0:
+		arrays[Mesh.ARRAY_TEX_UV] = out_uv
+	if colors.size() > 0:
+		arrays[Mesh.ARRAY_COLOR] = out_c
+	# An identity index keeps the surface indexed like every
+	# other surface in the project — an empty index reads back
+	# as null from surface_get_arrays, and a typed read of it
+	# aborts _add_collision (the wall lost its collision body
+	# entirely on the first cut build; the suites' walker
+	# never noticed because the window colliders still stood).
+	var identity := PackedInt32Array()
+	identity.resize(out_v.size())
+	for i in out_v.size():
+		identity[i] = i
+	arrays[Mesh.ARRAY_INDEX] = identity
+	# Tangents (and any skinning arrays) are sized for the
+	# ORIGINAL vertex count; left in place they no longer
+	# match the rebuilt vertices and the surface is rejected
+	# wholesale ("array.size() != vertex count * 4" — the
+	# second cut build lost the whole ExteriorWalls surface
+	# this way). The house's flat colours use none of them.
+	arrays[Mesh.ARRAY_TANGENT] = null
+	arrays[Mesh.ARRAY_BONES] = null
+	arrays[Mesh.ARRAY_WEIGHTS] = null
+	return arrays
+
+func _poly_touches(poly: Array, box: AABB) -> bool:
+	var lo: Vector3 = poly[0][0]
+	var hi: Vector3 = poly[0][0]
+	for rec in poly:
+		lo = lo.min(rec[0])
+		hi = hi.max(rec[0])
+	return AABB(lo, hi - lo).intersects(box)
+
+# The part of a convex polygon that lies OUTSIDE the box, as
+# a list of convex polygons: walk the six planes; at each
+# plane, what is outside is finished, what is inside goes on
+# to be cut by the next plane. What survives all six is the
+# box's interior — dropped.
+func _subtract_box(poly: Array, box: AABB) -> Array:
+	var result: Array = []
+	var remaining: Array = [poly]
+	var planes: Array = [
+		[0, box.position.x, true], [0, box.position.x + box.size.x, false],
+		[1, box.position.y, true], [1, box.position.y + box.size.y, false],
+		[2, box.position.z, true], [2, box.position.z + box.size.z, false],
+	]
+	for pl in planes:
+		var next: Array = []
+		for piece in remaining:
+			var outside: Array = _clip_half(piece, pl[0], pl[1], pl[2])
+			var inside: Array = _clip_half(piece, pl[0], pl[1], not pl[2])
+			if outside.size() >= 3:
+				result.append(outside)
+			if inside.size() >= 3:
+				next.append(inside)
+		remaining = next
+		if remaining.is_empty():
+			break
+	return result
+
+func _clip_half(poly: Array, axis: int, value: float, keep_below: bool) -> Array:
+	var out: Array = []
+	if poly.is_empty():
+		return out
+	for i in poly.size():
+		var cur: Array = poly[i]
+		var prev: Array = poly[(i + poly.size() - 1) % poly.size()]
+		var cur_in: bool = (cur[0][axis] <= value) if keep_below else (cur[0][axis] >= value)
+		var prev_in: bool = (prev[0][axis] <= value) if keep_below else (prev[0][axis] >= value)
+		if cur_in:
+			if not prev_in:
+				out.append(_crossing(prev, cur, axis, value))
+			out.append(cur)
+		elif prev_in:
+			out.append(_crossing(prev, cur, axis, value))
+	return out
+
+func _crossing(a: Array, b: Array, axis: int, value: float) -> Array:
+	var t: float = (value - a[0][axis]) / (b[0][axis] - a[0][axis])
+	return [
+		a[0].lerp(b[0], t),
+		a[1].lerp(b[1], t).normalized(),
+		a[2].lerp(b[2], t),
+		a[3].lerp(b[3], t),
+	]
 
 # Collision is built by hand from the baked triangles, not
 # via create_trimesh_collision, because the model's slab
@@ -157,7 +330,8 @@ func _add_collision(mesh: ArrayMesh, mesh_name: String) -> void:
 	for s in mesh.get_surface_count():
 		var arrays: Array = mesh.surface_get_arrays(s)
 		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-		var index: PackedInt32Array = arrays[Mesh.ARRAY_INDEX]
+		var raw_i: Variant = arrays[Mesh.ARRAY_INDEX]
+		var index: PackedInt32Array = raw_i if raw_i != null else PackedInt32Array()
 		var tri_count: int = index.size() / 3
 		if index.size() == 0:
 			tri_count = verts.size() / 3

@@ -13,6 +13,7 @@ const HudScript: GDScript = preload("res://scripts/hud.gd")
 const TrimScript: GDScript = preload("res://scripts/trim.gd")
 
 var trim: Trim = null
+var mirror: Mirror = null
 
 var player: Player = null
 var door: DoorLeaf = null  # the basement-stairs leaf (kept named for the suites)
@@ -91,6 +92,12 @@ func _build_pieces() -> void:
 		circuits[pspec["group"]].append(prop)
 	for plate in plates:
 		(plate as FixturePiece).circuit = circuits.get((plate as FixturePiece).group_name, [])
+	# The bathroom mirror reflects for real (see mirror.gd).
+	for child in get_children():
+		if child is Piece and (child as Piece).file == "mirror":
+			mirror = Mirror.new()
+			add_child(mirror)
+			mirror.attach(player, child as Piece)
 	# The claw hammer starts inside the junk drawer, sealed
 	# until the drawer opens (see drawer.gd).
 	var hammer: ItemPiece = ItemPiece.new()

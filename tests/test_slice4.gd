@@ -135,6 +135,53 @@ func _run() -> void:
 	Input.action_release("move_forward")
 	check(_player.global_position.x < 5.66 and _player.global_position.x > 5.3, "the walker stopped at the glass (x=%.2f)" % _player.global_position.x)
 
+	print("W2 the bake cuts the window openings")
+	# The model's walls are solid behind the units (see
+	# house.gd WINDOW_CUTS); the bake clips the openings.
+	# Physics rays with the units' own colliders excluded:
+	# through the living-room opening the ray leaves the
+	# house; a metre south the same wall still stops it.
+	var space: PhysicsDirectSpaceState3D = _main.get_world_3d().direct_space_state
+	var exclude: Array[RID] = []
+	# The units' colliders are world-space siblings of the
+	# pieces (and their node names get uniquified on add, so
+	# match by position, not name).
+	for child in _main.get_children():
+		if child is StaticBody3D:
+			for other in _main.get_children():
+				if other is Piece and (other as Piece).file == "window":
+					var bp: Vector3 = (child as StaticBody3D).global_position
+					var pp: Vector3 = (other as Piece).global_position
+					if Vector2(bp.x, bp.z).distance_to(Vector2(pp.x, pp.z)) < 0.6:
+						exclude.append((child as StaticBody3D).get_rid())
+	var q_open := PhysicsRayQueryParameters3D.create(Vector3(-4.2, 1.62, 2.5), Vector3(-9.0, 1.62, 2.5))
+	q_open.collision_mask = 1
+	q_open.exclude = exclude
+	var hit_open: Dictionary = space.intersect_ray(q_open)
+	check(hit_open.is_empty() or (hit_open["position"] as Vector3).x < -6.1, "the ray through the window opening leaves the house")
+	var q_ctrl := PhysicsRayQueryParameters3D.create(Vector3(-4.2, 1.62, 0.9), Vector3(-9.0, 1.62, 0.9))
+	q_ctrl.collision_mask = 1
+	q_ctrl.exclude = exclude
+	var hit_ctrl: Dictionary = space.intersect_ray(q_ctrl)
+	check(not hit_ctrl.is_empty() and absf((hit_ctrl["position"] as Vector3).x + 5.9) < 0.05, "the same wall is intact a metre south (control ray)")
+
+	print("M1 the bathroom mirror reflects")
+	var mirror: Node = _main.get("mirror")
+	check(mirror != null, "the mirror rig exists")
+	_player.global_position = Vector3(0.617, 2.6, -2.6)
+	_player.velocity = Vector3.ZERO
+	_player.rotation.y = 0.0
+	_player.set_pitch(0.0)
+	await settle(3)
+	await process_frame
+	await process_frame
+	var mcam: Camera3D = mirror.get("_cam")
+	check(mcam != null, "the mirror camera exists")
+	var mo: Vector3 = mcam.global_transform.origin
+	check(absf(mo.x - 0.617) < 0.02 and absf(mo.y - 4.22) < 0.02 and absf(mo.z + 5.90) < 0.02, "the mirror camera sits mirrored behind the glass (at %.2f, %.2f, %.2f)" % [mo.x, mo.y, mo.z])
+	var mf: Vector3 = -mcam.global_transform.basis.z
+	check(mf.distance_to(Vector3(0, 0, 1)) < 0.02, "the mirror camera looks back into the room")
+
 	if _failures == 0:
 		print("SLICE4: ALL PASS")
 	if _failures > 0:
