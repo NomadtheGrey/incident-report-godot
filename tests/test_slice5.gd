@@ -71,6 +71,26 @@ func _run() -> void:
 	Input.action_release("move_forward")
 	check(_player.global_position.x > couch.global_position.x + 0.3, "the walker stopped at the couch (x=%.2f vs couch %.2f)" % [_player.global_position.x, couch.global_position.x])
 
+	print("P4 the East Room can be entered (the armchair fix)")
+	# Through the archway mouth at z 1.1, then the open lane
+	# at z 2.2 — at the old spots the chairs plugged both.
+	_player.global_position = Vector3(0.0, 0.1, 1.1)
+	_player.velocity = Vector3.ZERO
+	_player.rotation.y = -PI / 2.0
+	await settle(3)
+	Input.action_press("move_forward")
+	await settle(60)
+	Input.action_release("move_forward")
+	check(_player.global_position.x > 1.6, "through the archway mouth (x=%.2f)" % _player.global_position.x)
+	_player.global_position = Vector3(1.6, 0.1, 2.2)
+	_player.velocity = Vector3.ZERO
+	_player.rotation.y = -PI / 2.0
+	await settle(3)
+	Input.action_press("move_forward")
+	await settle(110)
+	Input.action_release("move_forward")
+	check(_player.global_position.x > 4.0, "the East Room's open lane (x=%.2f)" % _player.global_position.x)
+
 	print("T1 the trim")
 	var trim: Trim = _main.get("trim")
 	check(trim.casing_count == 48, "48 casing pieces around the nine openings (got %d)" % trim.casing_count)

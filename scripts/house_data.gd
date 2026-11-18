@@ -260,8 +260,13 @@ const PIECES: Array = [
 	{"file": "coffee-table", "name": "Coffee Table", "kind": "static", "lc": Vector2(0, 0.0172), "w": 1.1, "d": 0.55, "h": 0.42, "cx": -4.3, "cz": 2.55, "yaw": 1.5708, "y": 0.1, "box": true},
 	{"file": "book-stack", "name": "Books", "kind": "static", "lc": Vector2(0, 0), "w": 0.26, "d": 0.2, "h": 0.14, "cx": -4.3, "cz": 2.25, "yaw": 0.4, "y": 0.52, "box": false},
 	{"file": "tv-remote", "name": "TV Remote", "kind": "static", "lc": Vector2(0, 0), "w": 0.06, "d": 0.17, "h": 0.02, "cx": -4.22, "cz": 2.85, "yaw": -0.3, "y": 0.52, "box": false},
-	{"file": "armchair", "name": "Armchair", "kind": "static", "lc": Vector2(0, 0.0275), "w": 0.95, "d": 0.88, "h": 0.95, "cx": 0.85, "cz": 1.1, "yaw": 0, "y": 0.1, "box": true},
-	{"file": "armchair", "name": "Armchair", "kind": "static", "lc": Vector2(0, 0.0275), "w": 0.95, "d": 0.88, "h": 0.95, "cx": 1.95, "cz": 1.1, "yaw": 0, "y": 0.1, "box": true},
+	# DIVERGES from the React table on purpose (Adam's playtest,
+	# 2026-11-18): at (0.85, 1.1) and (1.95, 1.1) the pair plugged
+	# the hall/archway mouth and he got completely stuck. They now
+	# sit along the East Room's south wall, east of the archway.
+	# A re-transcription must keep these two where they are.
+	{"file": "armchair", "name": "Armchair", "kind": "static", "lc": Vector2(0, 0.0275), "w": 0.95, "d": 0.88, "h": 0.95, "cx": 2.9, "cz": 1.05, "yaw": 0, "y": 0.1, "box": true},
+	{"file": "armchair", "name": "Armchair", "kind": "static", "lc": Vector2(0, 0.0275), "w": 0.95, "d": 0.88, "h": 0.95, "cx": 4.0, "cz": 1.05, "yaw": 0, "y": 0.1, "box": true},
 	{"file": "table-plant", "name": "Potted Plant", "kind": "static", "lc": Vector2(0, 0), "w": 0.46, "d": 0.48, "h": 0.61, "cx": -3.6, "cz": -2.25, "yaw": 0, "y": 0.86, "box": false},
 	{"file": "fruit-bowl", "name": "Fruit Bowl", "kind": "static", "lc": Vector2(0, 0), "w": 0.25, "d": 0.25, "h": 0.14, "cx": -4.4, "cz": -1.8, "yaw": 0, "y": 0.86, "box": false},
 	{"file": "hanging-plant", "name": "Hanging Plant", "kind": "static", "lc": Vector2(0, 0), "w": 0.27, "d": 0.24, "h": 0, "cx": -5.7, "cz": -2, "yaw": 0, "y": 2.32, "box": false},
@@ -319,7 +324,7 @@ const PROPS: Array = [
 		"at": Vector3(0.5, 0.1, -0.5), "light_at": Vector3(0, 2.05, 0),
 		"energy": 1.5, "range": 8.0},
 	{"id": "bath-bar", "name": "Vanity Light", "group": "bath", "visual": "bar",
-		"at": Vector3(0.62, 2.6, -3.9), "light_at": Vector3(0, 1.9, 0),
+		"at": Vector3(0.62, 2.6, -4.34), "light_at": Vector3(0, 2.28, 0),
 		"energy": 1.5, "range": 5.5},
 	{"id": "basement-bulb-a", "name": "Basement Bulb", "group": "basement", "visual": "bulb",
 		"at": Vector3(-0.5, -2.4, 1.2), "light_at": Vector3(0, 2.05, 0),

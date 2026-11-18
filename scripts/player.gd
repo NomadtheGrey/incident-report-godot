@@ -43,11 +43,14 @@ func _ready() -> void:
 	_camera.fov = 72.0
 	_camera.near = 0.05
 	_camera.far = 120.0
-	# The eye sits 0.16 ahead of the head axis (the React FP
-	# body fix): the whole head stays behind the near plane,
-	# so looking down shows his own torso, and the mirror
-	# shows the whole man.
-	_camera.position = Vector3(0, 0, -0.16)
+	# The eye sits ahead of the head axis. React's 0.16 was
+	# not enough in Godot: measured, the head bone sits 0.066
+	# ahead of the axis and the skull's front reaches ~0.19,
+	# so a 0.16 eye was INSIDE the skull — Adam's first
+	# walkthrough saw the inside of his own head at pitch.
+	# 0.24 clears the face; the rig also hides the head bone
+	# outright in first person (see character.gd).
+	_camera.position = Vector3(0, 0, -0.24)
 	_head.add_child(_camera)
 	# Third person: a spring arm off the head — the boom
 	# shortens against walls and ceilings on its own, which
@@ -64,6 +67,7 @@ func _ready() -> void:
 	_spring.add_child(_tp_camera)
 	_rig = CharacterRig.new()
 	add_child(_rig)
+	_rig.set_head_hidden(true)  # the game starts in first person
 	_ray = RayCast3D.new()
 	_ray.enabled = true
 	_ray.target_position = Vector3(0, 0, -2.75)
@@ -112,6 +116,8 @@ func set_view_tp(on: bool) -> void:
 		_tp_camera.current = true
 	if not on:
 		_camera.current = true
+	if _rig != null:
+		_rig.set_head_hidden(not on)
 
 func set_tp_dist(d: float) -> void:
 	tp_dist = clampf(d, 1.2, 4.5)

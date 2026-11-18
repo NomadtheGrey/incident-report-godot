@@ -70,12 +70,22 @@ func _run() -> void:
 
 	print("C4 the view toggle and the boom")
 	check(not _player.view_tp and _player.get_camera().current, "first person at spawn")
+	# The head bone is shrunk away in FP (Adam saw the inside
+	# of the skull at pitch) and restored in TP.
+	var skel: Skeleton3D = rig.get("_skel")
+	var head_i: int = skel.find_bone("Head")
+	await settle(5)
+	var fp_scale: float = skel.get_bone_global_pose(head_i).basis.get_scale().x
+	check(fp_scale < 0.05, "FP: the head is hidden (scale=%.3f)" % fp_scale)
 	var ev := InputEventAction.new()
 	ev.action = "toggle_view"
 	ev.pressed = true
 	_main.call("_unhandled_input", ev)
 	await settle(3)
 	check(_player.view_tp and _player.get_tp_camera().current, "V switched to third person")
+	await settle(5)
+	var tp_scale: float = skel.get_bone_global_pose(head_i).basis.get_scale().x
+	check(tp_scale > 0.9, "TP: the head is back (scale=%.3f)" % tp_scale)
 	var wheel := InputEventMouseButton.new()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	wheel.pressed = true
