@@ -119,6 +119,14 @@ func _bake_mesh(src: MeshInstance3D, node_xform: Transform3D) -> void:
 # Rule: a vertical triangle no taller than 0.12, sitting in
 # the slab band (y -0.02..0.12) over the shaft, is a lip,
 # not a wall. The visual mesh keeps every triangle.
+# The baked triangles, classified as the React extractor
+# classified them (|normal.y| > 0.5 is a floor, everything
+# else a wall). The trim generator (trim.gd) derives
+# baseboards from these, so a future model export re-trims
+# itself the same way.
+var floor_tris: Array = []
+var wall_tris: Array = []
+
 func _add_collision(mesh: ArrayMesh, mesh_name: String) -> void:
 	var faces := PackedVector3Array()
 	for s in mesh.get_surface_count():
@@ -140,6 +148,7 @@ func _add_collision(mesh: ArrayMesh, mesh_name: String) -> void:
 				a = verts[t * 3]
 				b = verts[t * 3 + 1]
 				c = verts[t * 3 + 2]
+			_collect_tri(a, b, c)
 			if _is_slab_lip(a, b, c):
 				continue
 			faces.append(a)
@@ -157,6 +166,22 @@ func _add_collision(mesh: ArrayMesh, mesh_name: String) -> void:
 	cs.shape = shape
 	body.add_child(cs)
 	add_child(body)
+
+func _collect_tri(a: Vector3, b: Vector3, c: Vector3) -> void:
+	var n: Vector3 = (b - a).cross(c - a)
+	var len: float = n.length()
+	if len < 1e-10:
+		return
+	var tri: Dictionary = {
+		"a": a, "b": b, "c": c,
+		"min_x": minf(a.x, minf(b.x, c.x)), "max_x": maxf(a.x, maxf(b.x, c.x)),
+		"min_y": minf(a.y, minf(b.y, c.y)), "max_y": maxf(a.y, maxf(b.y, c.y)),
+		"min_z": minf(a.z, minf(b.z, c.z)), "max_z": maxf(a.z, maxf(b.z, c.z)),
+	}
+	if absf(n.y / len) > 0.5:
+		floor_tris.append(tri)
+		return
+	wall_tris.append(tri)
 
 func _is_slab_lip(a: Vector3, b: Vector3, c: Vector3) -> bool:
 	var min_y: float = minf(a.y, minf(b.y, c.y))

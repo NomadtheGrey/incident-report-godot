@@ -123,14 +123,17 @@ func _run() -> void:
 		if child is Piece and (child as Piece).file == "window":
 			windows += 1
 	check(windows == 4, "four window units placed")
-	_player.global_position = Vector3(-5.0, 0.1, 2.5)
+	# The east window: the living-room one's approach is
+	# blocked by the couch since the dressing landed (the
+	# couch backs onto that wall, as couches do).
+	_player.global_position = Vector3(5.0, 0.1, 2.5)
 	_player.velocity = Vector3.ZERO
-	_player.rotation.y = PI / 2.0
+	_player.rotation.y = -PI / 2.0
 	await settle(3)
 	Input.action_press("move_forward")
 	await settle(90)
 	Input.action_release("move_forward")
-	check(_player.global_position.x > -5.66 and _player.global_position.x < -5.3, "the walker stopped at the glass (x=%.2f)" % _player.global_position.x)
+	check(_player.global_position.x < 5.66 and _player.global_position.x > 5.3, "the walker stopped at the glass (x=%.2f)" % _player.global_position.x)
 
 	if _failures == 0:
 		print("SLICE4: ALL PASS")
