@@ -30,6 +30,15 @@ func attach_to_camera(camera: Camera3D) -> void:
 	position = grip[0]
 	rotation = grip[1]
 
+# Third person: the item rides the WeaponR bone, with the
+# React GRIP_TP rotation.
+func attach_to_hand(anchor: BoneAttachment3D) -> void:
+	held = true
+	set_look_enabled(false)
+	reparent(anchor, false)
+	position = Vector3.ZERO
+	rotation = HouseData.GRIPS_TP[file]
+
 func detach_to_world(world_parent: Node, at: Vector3, facing_yaw: float) -> void:
 	held = false
 	reparent(world_parent, false)

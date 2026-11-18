@@ -18,6 +18,12 @@ var _head: Node3D = null
 var _camera: Camera3D = null
 var _ray: RayCast3D = null
 var _pitch: float = 0.0
+var _rig: CharacterRig = null
+var _spring: SpringArm3D = null
+var _tp_camera: Camera3D = null
+
+var view_tp: bool = false
+var tp_dist: float = 3.0
 
 func _ready() -> void:
 	collision_layer = 1
@@ -37,7 +43,27 @@ func _ready() -> void:
 	_camera.fov = 72.0
 	_camera.near = 0.05
 	_camera.far = 120.0
+	# The eye sits 0.16 ahead of the head axis (the React FP
+	# body fix): the whole head stays behind the near plane,
+	# so looking down shows his own torso, and the mirror
+	# shows the whole man.
+	_camera.position = Vector3(0, 0, -0.16)
 	_head.add_child(_camera)
+	# Third person: a spring arm off the head — the boom
+	# shortens against walls and ceilings on its own, which
+	# is what keeps the ceiling out of the TP camera.
+	_spring = SpringArm3D.new()
+	_spring.spring_length = tp_dist
+	_spring.collision_mask = 1
+	_spring.margin = 0.1
+	_head.add_child(_spring)
+	_tp_camera = Camera3D.new()
+	_tp_camera.fov = 72.0
+	_tp_camera.near = 0.05
+	_tp_camera.far = 120.0
+	_spring.add_child(_tp_camera)
+	_rig = CharacterRig.new()
+	add_child(_rig)
 	_ray = RayCast3D.new()
 	_ray.enabled = true
 	_ray.target_position = Vector3(0, 0, -2.75)
@@ -77,6 +103,29 @@ func look_hits() -> Array:
 func get_camera() -> Camera3D:
 	return _camera
 
+func get_tp_camera() -> Camera3D:
+	return _tp_camera
+
+func set_view_tp(on: bool) -> void:
+	view_tp = on
+	if on:
+		_tp_camera.current = true
+	if not on:
+		_camera.current = true
+
+func set_tp_dist(d: float) -> void:
+	tp_dist = clampf(d, 1.2, 4.5)
+	_spring.spring_length = tp_dist
+
+func hand_anchor() -> BoneAttachment3D:
+	if _rig == null:
+		return null
+	return _rig.hand_anchor
+
+func play_oneshot(clip: String) -> void:
+	if _rig != null:
+		_rig.play_oneshot(clip)
+
 # Tests and touch look set the pitch directly; mouse look
 # keeps it clamped in _unhandled_input.
 func set_pitch(p: float) -> void:
@@ -112,4 +161,10 @@ func _physics_process(delta: float) -> void:
 		velocity.y = -0.5
 	if not is_on_floor():
 		velocity.y -= GRAVITY * delta
+	# Locomotion reads the INTENDED speed, captured before
+	# the slide: move_and_slide rewrites velocity to the
+	# slid result, which reads ~0 when he pushes on a wall.
+	var wish_speed: float = Vector2(velocity.x, velocity.z).length()
 	move_and_slide()
+	if _rig != null:
+		_rig.set_locomotion(wish_speed)
