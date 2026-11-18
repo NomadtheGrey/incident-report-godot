@@ -18,6 +18,7 @@ var held: ItemPiece = null
 var _hud: CanvasLayer = null
 var _zone_now: String = ""
 var _look_piece: Piece = null
+var _door_was_shut: bool = true
 
 func _ready() -> void:
 	_build_environment()
@@ -97,6 +98,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("fan_cord"):
 		if _look_piece is FixturePiece and _look_piece.spec["kind"] == "fan":
 			(_look_piece as FixturePiece).toggle_spin()
+	if event.is_action_pressed("toggle_view"):
+		player.set_view_tp(not player.view_tp)
+		_seat_held()
+	if event is InputEventMouseButton and player.view_tp:
+		var mb: InputEventMouseButton = event as InputEventMouseButton
+		if mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_UP:
+			player.set_tp_dist(player.tp_dist - 0.35)
+		if mb.pressed and mb.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			player.set_tp_dist(player.tp_dist + 0.35)
 
 func _interact() -> void:
 	if _look_piece != null:
@@ -105,8 +115,10 @@ func _interact() -> void:
 			return
 		if _look_piece is FixturePiece or _look_piece is SearchableDrawer:
 			_look_piece.interact()
+			player.play_oneshot("Use _ press")
 			return
 	if door.try_toggle_lock(player.global_position):
+		player.play_oneshot("Use _ press")
 		return
 	if held != null:
 		_drop_held()
@@ -115,7 +127,16 @@ func _pick_up(item: ItemPiece) -> void:
 	if held != null:
 		_drop_held()
 	held = item
-	item.attach_to_camera(player.get_camera())
+	_seat_held()
+	player.play_oneshot("Pick up (ground)")
+
+func _seat_held() -> void:
+	if held == null:
+		return
+	if player.view_tp and player.hand_anchor() != null:
+		held.attach_to_hand(player.hand_anchor())
+		return
+	held.attach_to_camera(player.get_camera())
 
 func _drop_held() -> void:
 	var facing: Vector3 = -player.global_transform.basis.z
@@ -124,8 +145,14 @@ func _drop_held() -> void:
 	var at: Vector3 = player.global_position + facing * 0.45
 	held.detach_to_world(self, at, player.rotation.y)
 	held = null
+	player.play_oneshot("Put down _ drop (ground)")
 
 func _physics_process(_delta: float) -> void:
+	# The door swinging open from shut gets its one-shot,
+	# as in the React build.
+	if _door_was_shut and door.open01 >= 0.02:
+		player.play_oneshot("Open door")
+	_door_was_shut = door.open01 < 0.02
 	var zone: String = HouseData.zone_at(player.global_position.x, player.global_position.z, player.global_position.y)
 	if zone != _zone_now:
 		_zone_now = zone

@@ -149,3 +149,13 @@ const GRIPS: Dictionary = {
 	"claw-hammer": [Vector3(0.26, -0.24, -0.45), Vector3(0.5, 0.0, -0.35)],
 	"fire-extinguisher": [Vector3(0.3, -0.32, -0.5), Vector3(0.0, 0.0, 0.0)],
 }
+
+# Third-person grip rotations, ported from GRIP_TP — in TP
+# the held item snaps to the WeaponR bone (position is the
+# bone's own origin; only the rotation carries over).
+const GRIPS_TP: Dictionary = {
+	"skillet": Vector3(1.35, 0.0, 0.55),
+	"pot": Vector3(0.3, 0.0, 0.0),
+	"claw-hammer": Vector3(1.1, 0.0, 0.2),
+	"fire-extinguisher": Vector3(0.2, 0.0, 0.0),
+}

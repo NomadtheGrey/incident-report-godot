@@ -7,3 +7,7 @@
 # System/tool-specific ignores
 .DS_Store
 *.tmp
+
+# The homeowner ships as base64 parts (push-files is text-only);
+# the raw GLB stays local.
+assets/models/Goodguy.glb
