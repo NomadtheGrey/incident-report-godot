@@ -26,16 +26,9 @@ const FILE_TO_GAME: Basis = Basis(
 )
 const FILE_ORIGIN: Vector3 = Vector3(0, 0, 0.5)
 
-# The four window reference blocks are skipped and their
-# openings blocked with plain boxes until the window pieces
-# land (the React build fills them with a window unit).
-# [centre, size]
-const WINDOW_BLOCKERS: Array = [
-	[Vector3(-5.84, 1.615, -2.0), Vector3(0.14, 1.05, 2.08)],
-	[Vector3(-5.84, 1.615, 2.5), Vector3(0.14, 1.05, 2.08)],
-	[Vector3(-1.5, 1.615, 4.34), Vector3(2.08, 1.05, 0.14)],
-	[Vector3(5.84, 1.615, 2.5), Vector3(0.14, 1.05, 2.08)],
-]
+# The four window reference blocks are skipped; since
+# slice 4 the window PIECES fill their openings (and carry
+# their own colliders), so the house no longer blocks them.
 
 # Stair ramps: the model's flights are discrete step boxes,
 # which a capsule walker cannot climb. Invisible wedges lie
@@ -65,7 +58,6 @@ func _ready() -> void:
 	var inst: Node = packed.instantiate()
 	_bake_node(inst, Transform3D.IDENTITY)
 	inst.queue_free()
-	_add_window_blockers()
 	_add_stair_ramps()
 
 func _bake_node(n: Node, parent_xform: Transform3D) -> void:
@@ -77,7 +69,7 @@ func _bake_node(n: Node, parent_xform: Transform3D) -> void:
 	if node_name == "Locators" or node_name.ends_with("Loc"):
 		return  # his locator markers: not geometry we keep
 	if WINDOW_NAMES.has(node_name):
-		return  # reference blocks; blockers stand in for now
+		return  # reference blocks; the window pieces fill these openings
 	if n is MeshInstance3D:
 		_bake_mesh(n as MeshInstance3D, xform)
 	for child in n.get_children():
@@ -203,21 +195,7 @@ func _flip_winding(arrays: Array, mesh_name: String) -> void:
 		index[t + 2] = tmp
 	arrays[Mesh.ARRAY_INDEX] = index
 
-func _add_window_blockers() -> void:
-	for entry in WINDOW_BLOCKERS:
-		var e: Array = entry
-		var centre: Vector3 = e[0]
-		var size: Vector3 = e[1]
-		var body := StaticBody3D.new()
-		body.collision_layer = 1
-		body.collision_mask = 0
-		var shape := CollisionShape3D.new()
-		var box := BoxShape3D.new()
-		box.size = size
-		shape.shape = box
-		body.add_child(shape)
-		body.position = centre
-		add_child(body)
+
 
 func _add_stair_ramps() -> void:
 	for entry in STAIR_RAMPS:

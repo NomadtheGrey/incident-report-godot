@@ -1,115 +1,116 @@
 class_name DoorLeaf
 extends Node3D
 
-# One swinging, lockable door leaf, ported from the React
-# build's ModelDoor system. The node sits at the hinge pivot;
-# the panel extends +z from it when closed.
-#
-# The basement-stair door (the first instance) locks from the
-# room side but swings INTO the room, never out over the
-# flight — Adam's pin, and the reason open_angle is decoupled
-# from inside_sign. The sign: rotation.y = -1.75 swings the
-# panel west, into the room. (The React build's swing sign
-# lands it over the flight instead — flagged to Adam
-# 2026-11-18; this build follows the pin.)
+# One interior door, built from its HouseData.DOORS spec.
+# The leaf hangs on a pivot at one jamb and swings into its
+# room (open_angle follows the spec's swing, defaulting to
+# inside_sign, with Godot's mirrored sign convention). It
+# opens by proximity when unlocked — or always from inside —
+# and locks only from inside, like the privacy knobs in the
+# real house (Adam's pin). The basement-stairs leaf is the
+# special case: it locks from the room side but swings into
+# the room too (its spec carries swing apart from
+# inside_sign), because a real basement door never swings
+# out over the flight. (Its React twin still swings the
+# wrong way — a one-line fix flagged to Adam 2026-11-18.)
 
+const DOOR_H: float = 2.3
+const OPEN_RATE: float = 2.4
+const OPEN_DIST: float = 1.35
+const LOCK_DIST: float = 1.3
+
+var spec: Dictionary = {}
 var door_name: String = "Door"
-var centre: Vector3 = Vector3.ZERO
-var floor_y: float = 0.0
-var inside_sign: float = -1.0
-var open_angle: float = -1.75
-var width: float = 1.1
 var open01: float = 0.0
 var locked: bool = false
 var player: Node3D = null
 
+var _pivot: Node3D = null
 var _body: StaticBody3D = null
 var _shape: CollisionShape3D = null
+var _centre: Vector3 = Vector3.ZERO
+var _open_angle: float = 0.0
 
-const DOOR_H: float = 2.3
-const OPEN_RATE: float = 2.4
-const OPEN_RANGE: float = 1.35
-const LOCK_RANGE: float = 1.3
-
-func setup(spec: Dictionary) -> void:
+func setup(p_spec: Dictionary) -> void:
+	spec = p_spec
 	door_name = spec["name"]
-	centre = spec["centre"]
-	floor_y = spec["floor_y"]
-	inside_sign = spec["inside_sign"]
-	open_angle = spec["open_angle"]
-	width = spec["width"]
-	position = spec["pivot"]
-
-func _ready() -> void:
-	add_to_group("doors")
+	var cx: float = spec["cx"]
+	var cz: float = spec["cz"]
+	var fy: float = spec["floor_y"]
+	var width: float = spec["width"]
+	_centre = Vector3(cx, fy, cz)
+	var swing: float = spec.get("swing", spec["inside_sign"])
+	_pivot = Node3D.new()
+	var panel_size: Vector3
+	var panel_pos: Vector3
+	if spec["wall_axis"] == "x":
+		_pivot.position = Vector3(cx, fy, cz - width / 2.0)
+		panel_size = Vector3(0.05, DOOR_H, width)
+		panel_pos = Vector3(0, DOOR_H / 2.0, width / 2.0)
+		_open_angle = -swing * 1.75
+	if spec["wall_axis"] == "z":
+		_pivot.position = Vector3(cx - width / 2.0, fy, cz)
+		panel_size = Vector3(width, DOOR_H, 0.05)
+		panel_pos = Vector3(width / 2.0, DOOR_H / 2.0, 0)
+		_open_angle = swing * 1.75
+	add_child(_pivot)
+	var mesh := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = panel_size
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.43, 0.31, 0.18)
 	mat.roughness = 0.85
-	var mesh := MeshInstance3D.new()
-	var box := BoxMesh.new()
-	box.size = Vector3(0.05, DOOR_H, width)
 	box.material = mat
 	mesh.mesh = box
-	mesh.position = Vector3(0, DOOR_H / 2.0, width / 2.0)
-	add_child(mesh)
+	mesh.position = panel_pos
+	_pivot.add_child(mesh)
 	_body = StaticBody3D.new()
 	_body.collision_layer = 2
 	_body.collision_mask = 0
+	_body.set_meta("door", self)
 	_shape = CollisionShape3D.new()
-	var shape_box := BoxShape3D.new()
-	shape_box.size = Vector3(0.05, DOOR_H, width)
-	_shape.shape = shape_box
-	_shape.position = Vector3(0, DOOR_H / 2.0, width / 2.0)
+	var shape := BoxShape3D.new()
+	shape.size = panel_size
+	_shape.shape = shape
+	_shape.position = panel_pos
 	_body.add_child(_shape)
-	add_child(_body)
+	_pivot.add_child(_body)
 
 func body() -> StaticBody3D:
 	return _body
 
-func is_inside(pos: Vector3) -> bool:
-	var off: float = pos.x - centre.x
-	if off == 0.0:
-		return true
-	return signf(off) == inside_sign
-
-func _dist2d(pos: Vector3) -> float:
-	return Vector2(pos.x - centre.x, pos.z - centre.z).length()
-
-func _same_floor(pos: Vector3) -> bool:
-	return absf(pos.y - floor_y) < 1.0
+func _inside(p: Vector3) -> bool:
+	if spec["wall_axis"] == "x":
+		return signf(p.x - _centre.x) == float(spec["inside_sign"])
+	return signf(p.z - _centre.z) == float(spec["inside_sign"])
 
 func _physics_process(delta: float) -> void:
 	if player == null:
 		return
-	var target: float = 0.0
-	if _same_floor(player.global_position) and _dist2d(player.global_position) < OPEN_RANGE:
-		if not locked or is_inside(player.global_position):
-			target = 1.0
+	var p: Vector3 = player.global_position
+	var near: bool = Vector2(p.x - _centre.x, p.z - _centre.z).length() < OPEN_DIST and absf(p.y - _centre.y) < 1.0
+	var should_open: bool = near and (not locked or _inside(p))
+	var target: float = 1.0 if should_open else 0.0
 	var step: float = OPEN_RATE * delta
-	open01 = clampf(open01 + clampf(target - open01, -step, step), 0.0, 1.0)
-	var s: float = open01 * open01 * (3.0 - 2.0 * open01)
-	rotation.y = open_angle * s
+	if open01 < target:
+		open01 = minf(target, open01 + step)
+	if open01 > target:
+		open01 = maxf(target, open01 - step)
+	var o: float = open01
+	_pivot.rotation.y = _open_angle * (o * o * (3.0 - 2.0 * o))
 	_shape.disabled = open01 > 0.45
 
-# E near the door, from the inside only (the React rule):
-# privacy locks are worked from the room they protect.
-func try_toggle_lock(player_pos: Vector3) -> bool:
-	if not _same_floor(player_pos):
-		return false
-	if _dist2d(player_pos) >= LOCK_RANGE:
-		return false
-	if not is_inside(player_pos):
+func lock_prompt(p: Vector3) -> String:
+	if Vector2(p.x - _centre.x, p.z - _centre.z).length() >= LOCK_DIST or absf(p.y - _centre.y) >= 1.0:
+		return ""
+	if not _inside(p):
+		return ""
+	if locked:
+		return "E — Unlock the " + door_name
+	return "E — Lock the " + door_name
+
+func try_toggle_lock(p: Vector3) -> bool:
+	if lock_prompt(p) == "":
 		return false
 	locked = not locked
 	return true
-
-func lock_prompt(player_pos: Vector3) -> String:
-	if not _same_floor(player_pos):
-		return ""
-	if _dist2d(player_pos) >= LOCK_RANGE:
-		return ""
-	if not is_inside(player_pos):
-		return ""
-	if locked:
-		return "E — Unlock the door"
-	return "E — Lock the door"

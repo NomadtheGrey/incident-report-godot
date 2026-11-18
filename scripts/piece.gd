@@ -23,7 +23,7 @@ func setup(p_spec: Dictionary) -> void:
 	spec = p_spec
 	file = spec["file"]
 	display_name = spec["name"]
-	name = file
+	name = file if file != "" else spec["name"]
 	if spec.has("local_pos"):
 		position = spec["local_pos"]
 	if spec.has("cx"):
@@ -31,12 +31,13 @@ func setup(p_spec: Dictionary) -> void:
 	rotation.y = spec.get("yaw", 0.0)
 
 func _ready() -> void:
-	var packed: PackedScene = load("res://assets/models/furniture/" + file + ".gltf")
-	_inner = packed.instantiate() as Node3D
-	_inner.scale = Vector3(16, 16, 16)
-	var lc: Vector2 = spec["lc"]
-	_inner.position = Vector3(-lc.x * 16.0, 0, -lc.y * 16.0)
-	add_child(_inner)
+	if file != "":
+		var packed: PackedScene = load("res://assets/models/furniture/" + file + ".gltf")
+		_inner = packed.instantiate() as Node3D
+		_inner.scale = Vector3(16, 16, 16)
+		var lc: Vector2 = spec["lc"]
+		_inner.position = Vector3(-lc.x * 16.0, 0, -lc.y * 16.0)
+		add_child(_inner)
 	_build_collider()
 	_build_look()
 
@@ -71,6 +72,8 @@ func _build_collider() -> void:
 	body.global_transform = global_transform * Transform3D(Basis(), Vector3(0, h / 2.0, 0))
 
 func _build_look() -> void:
+	if spec.get("no_look", false):
+		return
 	_look_body = StaticBody3D.new()
 	_look_body.name = file + "_look"
 	_look_body.collision_layer = 4
@@ -115,6 +118,8 @@ func _add_look_box(body: StaticBody3D, centre: Vector3, size: Vector3) -> Collis
 	return cs
 
 func _geometry_aabb() -> AABB:
+	if _inner == null:
+		return AABB()
 	var inv: Transform3D = global_transform.affine_inverse()
 	var out := AABB()
 	var first: bool = true
