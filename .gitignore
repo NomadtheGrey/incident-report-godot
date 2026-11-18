@@ -11,3 +11,12 @@
 # The homeowner ships as base64 parts (push-files is text-only);
 # the raw GLB stays local.
 assets/models/Goodguy.glb
+
+# Import receipts: Godot regenerates a .import file (and any
+# extracted texture PNGs) on every machine that opens the
+# project. This repo loads everything by path, so they are
+# local noise, not source — Adam's GitHub Desktop showed 21
+# of them as "changes" on his first pull (2026-11-18).
+*.import
+assets/models/all-floors_*.png
+assets/models/Goodguy_*.png
