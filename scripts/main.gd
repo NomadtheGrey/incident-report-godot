@@ -1,17 +1,23 @@
 extends Node3D
 
 # Bootstrap and wiring only (separation of concerns): the
-# environment, the house, the player, the one door, the HUD.
-# Each system owns its own logic in its own script.
+# environment, the house, the player, the door, the kitchen
+# pieces, the HUD. Each system owns its logic in its own
+# script; this file only connects them and routes the
+# contextual E key the way the React build did:
+# pick up / swap -> fixture -> searchable -> door lock ->
+# put down.
 
 const HouseScript: GDScript = preload("res://scripts/house.gd")
 const HudScript: GDScript = preload("res://scripts/hud.gd")
 
 var player: Player = null
 var door: DoorLeaf = null
+var held: ItemPiece = null
 
 var _hud: CanvasLayer = null
 var _zone_now: String = ""
+var _look_piece: Piece = null
 
 func _ready() -> void:
 	_build_environment()
@@ -25,8 +31,45 @@ func _ready() -> void:
 	door.setup(HouseData.DOOR_SPEC)
 	add_child(door)
 	door.player = player
+	_build_pieces()
 	_hud = HudScript.new()
 	add_child(_hud)
+
+func _build_pieces() -> void:
+	var circuits: Dictionary = {}
+	var plates: Array = []
+	var drawer: SearchableDrawer = null
+	for spec in HouseData.PIECES:
+		var piece: Piece = null
+		match spec["kind"]:
+			"item":
+				piece = ItemPiece.new()
+			"fan", "hood", "plate":
+				piece = FixturePiece.new()
+			"drawer":
+				piece = SearchableDrawer.new()
+				drawer = piece as SearchableDrawer
+			_:
+				piece = Piece.new()
+		piece.setup(spec)
+		add_child(piece)
+		if piece is FixturePiece:
+			var fx: FixturePiece = piece as FixturePiece
+			if fx.spec["kind"] == "plate":
+				plates.append(fx)
+			if fx.group_name != "":
+				if not circuits.has(fx.group_name):
+					circuits[fx.group_name] = []
+				circuits[fx.group_name].append(fx)
+	for plate in plates:
+		(plate as FixturePiece).circuit = circuits.get((plate as FixturePiece).group_name, [])
+	# The claw hammer starts inside the junk drawer, sealed
+	# until the drawer opens (see drawer.gd).
+	var hammer: ItemPiece = ItemPiece.new()
+	hammer.setup(HouseData.HAMMER_SPEC)
+	drawer.add_child(hammer)
+	drawer.content = hammer
+	hammer.set_sealed(true)
 
 func _build_environment() -> void:
 	# Night (Adam's pin): dark but not pitch black — a low
@@ -50,18 +93,74 @@ func _build_environment() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("interact"):
-		door.try_toggle_lock(player.global_position)
+		_interact()
+	if event.is_action_pressed("fan_cord"):
+		if _look_piece is FixturePiece and _look_piece.spec["kind"] == "fan":
+			(_look_piece as FixturePiece).toggle_spin()
+
+func _interact() -> void:
+	if _look_piece != null:
+		if _look_piece is ItemPiece:
+			_pick_up(_look_piece as ItemPiece)
+			return
+		if _look_piece is FixturePiece or _look_piece is SearchableDrawer:
+			_look_piece.interact()
+			return
+	if door.try_toggle_lock(player.global_position):
+		return
+	if held != null:
+		_drop_held()
+
+func _pick_up(item: ItemPiece) -> void:
+	if held != null:
+		_drop_held()
+	held = item
+	item.attach_to_camera(player.get_camera())
+
+func _drop_held() -> void:
+	var facing: Vector3 = -player.global_transform.basis.z
+	facing.y = 0.0
+	facing = facing.normalized()
+	var at: Vector3 = player.global_position + facing * 0.45
+	held.detach_to_world(self, at, player.rotation.y)
+	held = null
 
 func _physics_process(_delta: float) -> void:
 	var zone: String = HouseData.zone_at(player.global_position.x, player.global_position.z, player.global_position.y)
 	if zone != _zone_now:
 		_zone_now = zone
 		_hud.set_zone(zone)
+	_look_piece = null
 	var tag: String = ""
-	var hit: Object = player.look_collider()
-	if hit != null and hit == door.body():
+	var prompt: String = ""
+	# The nearest hit wins, with the React build's one
+	# correction: a searchable's target gets a 0.12 distance
+	# bias, because the counter's box front sits proud of the
+	# drawer front recessed inside it.
+	var best: Dictionary = {}
+	var best_dist: float = INF
+	for hit in player.look_hits():
+		var dist: float = player.get_camera().global_position.distance_to(hit["position"])
+		var collider: Object = hit["collider"]
+		if collider is StaticBody3D and (collider as StaticBody3D).has_meta("piece"):
+			var p: Piece = (collider as StaticBody3D).get_meta("piece")
+			if p is SearchableDrawer and (p as SearchableDrawer).open01 < 0.7:
+				dist -= 0.12
+		if dist < best_dist:
+			best_dist = dist
+			best = hit
+	var hit_body: Object = best.get("collider", null)
+	if hit_body != null and hit_body == door.body():
 		tag = door.door_name
 		if door.locked and door.open01 < 0.5:
 			tag += " — Locked"
+	if hit_body is StaticBody3D and (hit_body as StaticBody3D).has_meta("piece"):
+		_look_piece = (hit_body as StaticBody3D).get_meta("piece") as Piece
+		tag = _look_piece.look_name()
+		prompt = _look_piece.look_prompt(held)
+	if prompt == "":
+		prompt = door.lock_prompt(player.global_position)
+	if prompt == "" and held != null:
+		prompt = "E — Put down " + held.display_name
 	_hud.set_tag(tag)
-	_hud.set_prompt(door.lock_prompt(player.global_position))
+	_hud.set_prompt(prompt)
