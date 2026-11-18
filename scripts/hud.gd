@@ -28,7 +28,7 @@ func _ready() -> void:
 	_prompt_label.size = Vector2(500, 28)
 	add_child(_prompt_label)
 	var footer := _make_label(Vector2(0, 0), 13, HORIZONTAL_ALIGNMENT_CENTER)
-	footer.text = "Click: look · WASD: move · Shift: run · E: interact / lock"
+	footer.text = "Click: look · WASD: move · Shift: run · E: interact / lock · F: fan cord"
 	footer.modulate = Color(1, 1, 1, 0.55)
 	footer.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	footer.position = Vector2(-300, -40)
