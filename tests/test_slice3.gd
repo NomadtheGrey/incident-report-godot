@@ -76,7 +76,7 @@ func _run() -> void:
 	var head_i: int = skel.find_bone("Head")
 	await settle(5)
 	var fp_scale: float = skel.get_bone_global_pose(head_i).basis.get_scale().x
-	check(fp_scale < 0.05, "FP: the head is hidden (scale=%.3f)" % fp_scale)
+	check(fp_scale > 0.001 and fp_scale < 0.05, "FP: the head is hidden but not degenerate (scale=%.3f)" % fp_scale)
 	var ev := InputEventAction.new()
 	ev.action = "toggle_view"
 	ev.pressed = true

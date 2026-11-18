@@ -134,7 +134,11 @@ func set_head_hidden(on: bool) -> void:
 func _process(_delta: float) -> void:
 	if not _head_hidden or _skel == null or _head_bone < 0:
 		return
-	var pose: Transform3D = _skel.get_bone_global_pose(_head_bone)
+	# Read the pose WITHOUT the override: the plain getter
+	# includes it, so scaling that would compound frame over
+	# frame — 0.01, then 0.0001, then a degenerate zero basis
+	# the engine rightly complains about (caught in testing).
+	var pose: Transform3D = _skel.get_bone_global_pose_no_override(_head_bone)
 	var shrunk := Transform3D(pose.basis.scaled(Vector3(0.01, 0.01, 0.01)), pose.origin)
 	_skel.set_bone_global_pose_override(_head_bone, shrunk, 1.0, true)
 
