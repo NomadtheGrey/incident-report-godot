@@ -13,8 +13,9 @@ extends Node3D
 # screen, so it costs nothing outside the bathroom.
 #
 # Known trade (flagged to Adam): in first person the homeowner's
-# head is hidden by the FP rig fix, so his FP reflection is
-# headless; third person reflects the whole man, as React's did.
+# head rides along in both views (the FP camera sits
+# clear of the body on Adam's ruling), so the reflection
+# is the whole man, as React's was.
 
 var _vp: SubViewport = null
 var _cam: Camera3D = null

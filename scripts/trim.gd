@@ -101,6 +101,23 @@ func _build_baseboards(floors: Array, walls: Array) -> void:
 				fy = f
 		if fy == INF:
 			continue
+		# The wall must STAND on the floor along a level
+		# bottom edge — two of its verts in the window, and
+		# a real wall's height above it. Stair-shaft walls
+		# fail this on purpose: their bottoms climb with
+		# the flight, and a level box drawn from a sloped
+		# tri floats across the stairwell (Adam's
+		# walkthrough: trim "doesn't need to try to follow
+		# stairs"). Landings are floors, so their walls
+		# still earn trim; the flights earn none.
+		var low: int = 0
+		for v in [a, b, c]:
+			if v.y >= fy - 0.13 and v.y <= fy + 0.07:
+				low += 1
+		if low < 2:
+			continue
+		if t["max_y"] < fy + 0.5:
+			continue
 		var axis: String = "x" if x_flat else "z"
 		var face: float = a.x if x_flat else a.z
 		var from: float = minf(a.z, minf(b.z, c.z)) if x_flat else minf(a.x, minf(b.x, c.x))

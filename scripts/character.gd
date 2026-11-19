@@ -27,7 +27,6 @@ var _upper: AnimationPlayer = null
 var _oneshot_active: bool = false
 var _skel: Skeleton3D = null
 var _head_bone: int = -1
-var _head_hidden: bool = false
 
 func _ready() -> void:
 	rotation.y = PI
@@ -118,29 +117,13 @@ func _build_hand_anchor(scene_root: Node) -> void:
 		skel.add_child(hand_anchor)
 		return
 
-# First person hides the head outright: the FP eye sits
-# centimetres from the skull, and at pitch the camera was
-# seeing the head from inside (Adam's first walkthrough —
-# the inside of the mouth, looking up). The model is one
-# mesh, so the head BONE is scaled to nothing through a
-# global pose override, reapplied every frame after the
-# animation players have had their say. Third person
-# clears it and the whole man is back.
-func set_head_hidden(on: bool) -> void:
-	_head_hidden = on
-	if not on and _skel != null:
-		_skel.clear_bones_global_pose_override()
-
-func _process(_delta: float) -> void:
-	if not _head_hidden or _skel == null or _head_bone < 0:
-		return
-	# Read the pose WITHOUT the override: the plain getter
-	# includes it, so scaling that would compound frame over
-	# frame — 0.01, then 0.0001, then a degenerate zero basis
-	# the engine rightly complains about (caught in testing).
-	var pose: Transform3D = _skel.get_bone_global_pose_no_override(_head_bone)
-	var shrunk := Transform3D(pose.basis.scaled(Vector3(0.01, 0.01, 0.01)), pose.origin)
-	_skel.set_bone_global_pose_override(_head_bone, shrunk, 1.0, true)
+# The head stays. An earlier build shrank the head bone
+# away in first person (the FP eye sat centimetres from
+# the skull and saw it from inside at pitch); Adam's
+# verdict on his second walkthrough was that the shrunken
+# head "just won't work" — the camera instead sits clear
+# of the body (see player.gd's eye offset), so the whole
+# man renders in both views, mirror included.
 
 func set_locomotion(speed: float) -> void:
 	if _legs == null:

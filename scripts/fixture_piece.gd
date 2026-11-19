@@ -56,7 +56,14 @@ func _build_prop_visual() -> void:
 			sphere.height = 0.26
 			mi.mesh = sphere
 			mi.scale = Vector3(1, 0.55, 1)
-			mi.position = at
+			# The dome's top kisses the ceiling (centre at
+			# the light + 0.28 puts it at 2.43, its crown at
+			# the 2.50 underside). At the light's own height
+			# it hung 0.28 off the ceiling — a floating disc
+			# Adam read as a UFO poking out of the stairwell
+			# wall, with the hall smoke detector (since
+			# moved down the hall) as its smaller companion.
+			mi.position = at + Vector3(0, 0.28, 0)
 		"bar":
 			var bar_box := BoxMesh.new()
 			bar_box.size = Vector3(0.5, 0.06, 0.08)

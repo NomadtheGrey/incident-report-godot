@@ -24,6 +24,7 @@ var _hud: CanvasLayer = null
 var _zone_now: String = ""
 var _look_piece: Piece = null
 var _door_was_shut: Array = []
+var _wall_tris: Array = []
 
 func _ready() -> void:
 	_build_environment()
@@ -32,6 +33,7 @@ func _ready() -> void:
 	trim = TrimScript.new()
 	add_child(trim)
 	trim.build(house.get("floor_tris"), house.get("wall_tris"))
+	_wall_tris = house.get("wall_tris")
 	player = Player.new()
 	player.position = Vector3(4.6, 2.65, 1.6)
 	player.rotation.y = -PI / 2.0  # spawn faces east, as in the React build
@@ -66,6 +68,14 @@ func _build_pieces() -> void:
 			_:
 				piece = Piece.new()
 		piece.setup(spec)
+		# Wall-mounted pieces snap their backs onto the
+		# wall face (their registry seats were eyeballed;
+		# see Piece.snap_to_wall). Before add_child, so
+		# the collider and look body build at the seat.
+		if spec["kind"] == "plate":
+			piece.snap_to_wall(_wall_tris, 0.012)
+		if spec["file"] == "coat-hooks":
+			piece.snap_to_wall(_wall_tris, 0.0)
 		add_child(piece)
 		if piece is FixturePiece:
 			var fx: FixturePiece = piece as FixturePiece
@@ -200,7 +210,13 @@ func _physics_process(_delta: float) -> void:
 	# The nearest hit wins, with the React build's one
 	# correction: a searchable's target gets a 0.12 distance
 	# bias, because the counter's box front sits proud of the
-	# drawer front recessed inside it.
+	# drawer front recessed inside it. The open drawer earns
+	# a stronger bias the other way: aiming into the open
+	# box, the counter's look box (which spans the run,
+	# over the cavity) otherwise out-draws the drawer Adam
+	# is looking into — his walkthrough got "Kitchen
+	# Counter" staring at the hammer. The drawer's content
+	# shares the bias, so the hammer still wins its own aim.
 	var best: Dictionary = {}
 	var best_dist: float = INF
 	for hit in player.look_hits():
@@ -210,6 +226,10 @@ func _physics_process(_delta: float) -> void:
 			var p: Piece = (collider as StaticBody3D).get_meta("piece")
 			if p is SearchableDrawer and (p as SearchableDrawer).open01 < 0.7:
 				dist -= 0.12
+			if p is SearchableDrawer and (p as SearchableDrawer).open01 >= 0.7:
+				dist -= 0.35
+			if p is ItemPiece and (p as ItemPiece).get_parent() is SearchableDrawer and ((p as ItemPiece).get_parent() as SearchableDrawer).open01 >= 0.7:
+				dist -= 0.35
 		if dist < best_dist:
 			best_dist = dist
 			best = hit

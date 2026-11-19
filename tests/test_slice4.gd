@@ -178,9 +178,35 @@ func _run() -> void:
 	var mcam: Camera3D = mirror.get("_cam")
 	check(mcam != null, "the mirror camera exists")
 	var mo: Vector3 = mcam.global_transform.origin
-	check(absf(mo.x - 0.617) < 0.02 and absf(mo.y - 4.22) < 0.02 and absf(mo.z + 5.90) < 0.02, "the mirror camera sits mirrored behind the glass (at %.2f, %.2f, %.2f)" % [mo.x, mo.y, mo.z])
+	# The mirror camera is the FP eye reflected across the
+	# rig's own glass plane: same x and y, z mirrored.
+	# Computed from the live eye and plane so the check
+	# survives eye geometry changes (it baked 0.40-ahead
+	# constants once and broke when the pivot moved).
+	var eye: Vector3 = _player.get_camera().global_transform.origin
+	var plane_z: float = (mirror.get("_plane_point") as Vector3).z
+	check(absf(mo.x - eye.x) < 0.02 and absf(mo.y - eye.y) < 0.02 and absf(mo.z - (2.0 * plane_z - eye.z)) < 0.02, "the mirror camera sits mirrored behind the glass (at %.2f, %.2f, %.2f)" % [mo.x, mo.y, mo.z])
 	var mf: Vector3 = -mcam.global_transform.basis.z
 	check(mf.distance_to(Vector3(0, 0, 1)) < 0.02, "the mirror camera looks back into the room")
+
+	print("W3 the walkthrough seats (fan, plates, coats)")
+	var kfan: FixturePiece = null
+	for fx in _fixtures():
+		if (fx as FixturePiece).spec["kind"] == "fan" and (fx as FixturePiece).group_name == "kitchen":
+			kfan = fx as FixturePiece
+	check(kfan != null and absf(kfan.global_position.z + 2.75) < 0.01, "the kitchen fan hangs mid-kitchen (z=%.2f)" % (kfan.global_position.z if kfan != null else 0.0))
+	check(kfan != null and kfan.global_position.z + 0.65 < -1.70, "its blades clear the stair wall (reach z=%.2f)" % ((kfan.global_position.z + 0.65) if kfan != null else 0.0))
+	var kp: FixturePiece = _plate_at("kitchen", Vector3(3.0, 0, -1.7))
+	check(kp != null and absf(kp.global_position.z + 1.712) < 0.01, "the kitchen plate sits on its wall (z=%.3f)" % (kp.global_position.z if kp != null else 0.0))
+	var bp: FixturePiece = _plate_at("bed1", Vector3(-1.0, 0, -1.55))
+	check(bp != null and absf(bp.global_position.x + 1.087) < 0.01, "the Bedroom 1 plate sits on its wall (x=%.3f)" % (bp.global_position.x if bp != null else 0.0))
+	var hp2: FixturePiece = _plate_at("hall", Vector3(-0.2, 0, -1.59))
+	check(hp2 != null and absf(hp2.global_position.x + 0.2) < 0.01 and absf(hp2.global_position.z + 1.588) < 0.01, "the upstairs hall plate hangs west of the bathroom door, on the wall (at %.2f, %.3f)" % [(hp2.global_position.x if hp2 != null else 0.0), (hp2.global_position.z if hp2 != null else 0.0)])
+	var rack: Piece = null
+	for child in _main.get_children():
+		if child is Piece and (child as Piece).file == "coat-hooks":
+			rack = child as Piece
+	check(rack != null and absf(rack.global_position.x + 0.95) < 0.01, "the coat rack hangs on the hall's west wall (x=%.3f)" % (rack.global_position.x if rack != null else 0.0))
 
 	if _failures == 0:
 		print("SLICE4: ALL PASS")

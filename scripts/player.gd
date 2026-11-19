@@ -17,6 +17,8 @@ const MOUSE_SENS: float = 0.0022
 var _head: Node3D = null
 var _camera: Camera3D = null
 var _ray: RayCast3D = null
+var _eye_ray: RayCast3D = null
+var _eye_len: float = 0.28
 var _pitch: float = 0.0
 var _rig: CharacterRig = null
 var _spring: SpringArm3D = null
@@ -37,21 +39,45 @@ func _ready() -> void:
 	shape.position = Vector3(0, 0.8, 0)
 	add_child(shape)
 	_head = Node3D.new()
-	_head.position = Vector3(0, EYE_HEIGHT, 0)
+	# The pitch pivot sits 0.14 ahead of the body axis,
+	# inside the skull's own span (measured: the skull
+	# reaches 0.173 ahead of the axis, 0.047 behind). A
+	# pivot ON the axis arcs the eye through the chest at
+	# steep down-pitch — the eye's forward reach falls as
+	# cos(pitch) while its height is still inside the
+	# torso band, so at -1.25 rad the eye ended up inside
+	# the shirt shell, and the down-look filled with the
+	# shell's interior (the "black ribbons" of Adam's
+	# second walkthrough, chased through the mesh, the
+	# skinning and the near plane before the arc maths
+	# confessed). From the forward pivot, the eye on its
+	# 0.28 arm stays ahead of the body's measured front
+	# profile at every pitch in the +/-1.45 clamp.
+	_head.position = Vector3(0, EYE_HEIGHT, -0.14)
 	add_child(_head)
 	_camera = Camera3D.new()
 	_camera.fov = 72.0
 	_camera.near = 0.05
 	_camera.far = 120.0
-	# The eye sits ahead of the head axis. React's 0.16 was
-	# not enough in Godot: measured, the head bone sits 0.066
-	# ahead of the axis and the skull's front reaches ~0.19,
-	# so a 0.16 eye was INSIDE the skull — Adam's first
-	# walkthrough saw the inside of his own head at pitch.
-	# 0.24 clears the face; the rig also hides the head bone
-	# outright in first person (see character.gd).
-	_camera.position = Vector3(0, 0, -0.24)
+	# The eye rides 0.28 ahead of the (forward-shifted)
+	# head pivot — 0.42 ahead of the body axis in all.
+	# React's 0.16 was inside the skull in Godot (the head
+	# bone sits 0.066 ahead of the axis, the skull's front
+	# reaches ~0.19), and Adam's ruling on the second
+	# walkthrough was "the camera simply needs moved
+	# outside of the guy's body" — the head stays on, the
+	# eye stays out, and a short ray pulls the eye in when
+	# a wall or a door is closer than that, so it never
+	# pokes through what he's facing.
+	_camera.position = Vector3(0, 0, -0.28)
 	_head.add_child(_camera)
+	_eye_ray = RayCast3D.new()
+	_eye_ray.target_position = Vector3(0, 0, -0.34)
+	_eye_ray.collision_mask = 3  # world (1) + door leaves (2)
+	_eye_ray.exclude_parent = true
+	_eye_ray.add_exception(self)
+	_head.add_child(_eye_ray)
+	_eye_ray.enabled = true
 	# Third person: a spring arm off the head — the boom
 	# shortens against walls and ceilings on its own, which
 	# is what keeps the ceiling out of the TP camera.
@@ -67,7 +93,6 @@ func _ready() -> void:
 	_spring.add_child(_tp_camera)
 	_rig = CharacterRig.new()
 	add_child(_rig)
-	_rig.set_head_hidden(true)  # the game starts in first person
 	_ray = RayCast3D.new()
 	_ray.enabled = true
 	_ray.target_position = Vector3(0, 0, -2.75)
@@ -116,8 +141,6 @@ func set_view_tp(on: bool) -> void:
 		_tp_camera.current = true
 	if not on:
 		_camera.current = true
-	if _rig != null:
-		_rig.set_head_hidden(not on)
 
 func set_tp_dist(d: float) -> void:
 	tp_dist = clampf(d, 1.2, 4.5)
@@ -152,6 +175,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 func _physics_process(delta: float) -> void:
+	# The eye rides 0.28 ahead of the head pivot (see
+	# _ready); when the eye ray finds something closer,
+	# the eye pulls in to just short of it instead of
+	# clipping in.
+	if _eye_ray != null and _camera != null:
+		var want: float = 0.28
+		if _eye_ray.is_colliding():
+			var local: Vector3 = _head.to_local(_eye_ray.get_collision_point())
+			want = clampf(-local.z - 0.05, 0.08, 0.28)
+		_eye_len = move_toward(_eye_len, want, delta * 2.5)
+		_camera.position.z = -_eye_len
 	# The safety net: below the basement there is nothing,
 	# and an eternal fall helps nobody (Adam, first
 	# walkthrough). Respawn at the Master Bedroom spawn.
