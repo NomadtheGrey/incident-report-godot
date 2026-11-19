@@ -113,7 +113,12 @@ const PIECES: Array = [
 		"cx": 4.37, "cz": -4.07, "yaw": 0.0, "y": 0.1, "box": true},
 	{"file": "ceiling-fan", "name": "Ceiling Fan", "kind": "fan", "group": "kitchen",
 		"lc": Vector2(0.00275, 0.0), "w": 1.3, "d": 1.3, "h": 0.0,
-		"cx": 3.5, "cz": -2.0, "yaw": 0.0, "y": 2.5, "box": false},
+		# Moved south off the stair wall 2026-11-18: at
+		# cz -2.0 the blades (radius 0.65) reached z -1.35,
+		# through the stairwell's south wall (face -1.70)
+		# — Adam found a blade poking out of the stairwell.
+		# At -2.75 they clear it by 0.40, mid-kitchen.
+		"cx": 3.5, "cz": -2.75, "yaw": 0.0, "y": 2.5, "box": false},
 	{"file": "range-hood", "name": "Range Hood", "kind": "hood", "group": "kitchen",
 		"lc": Vector2(0.0, 0.0), "w": 0.82, "d": 0.5, "h": 0.0,
 		"cx": 4.37, "cz": -4.42, "yaw": 0.0, "y": 0.1, "box": false},
@@ -191,7 +196,12 @@ const PIECES: Array = [
 		"cx": 0.16, "cz": -0.55, "yaw": PI / 2.0, "y": 1.3, "box": false},
 	{"file": "switch-plate", "name": "Light Switch", "kind": "plate", "group": "hall",
 		"lc": Vector2(0.0, 0.00075), "w": 0.075, "d": 0.02, "h": 0.0,
-		"cx": 0.2, "cz": -1.59, "yaw": 0.0, "y": 3.8, "box": false},
+		# Moved west 2026-11-18: at cx 0.2 this plate hung
+		# in the bathroom doorway's opening (the door spans
+		# x 0.05..0.95 — no wall behind it; Adam found it
+		# floating in the doorway). West of the door the
+		# hall wall is solid and the snap seats it there.
+		"cx": -0.2, "cz": -1.59, "yaw": 0.0, "y": 3.8, "box": false},
 	{"file": "switch-plate", "name": "Light Switch", "kind": "plate", "group": "basement",
 		"lc": Vector2(0.0, 0.00075), "w": 0.075, "d": 0.02, "h": 0.0,
 		"cx": -1.21, "cz": 3.55, "yaw": -PI / 2.0, "y": -1.2, "box": false},
@@ -250,7 +260,7 @@ const PIECES: Array = [
 	{"file": "plunger", "name": "Plunger", "kind": "static", "lc": Vector2(0, 0), "w": 0.16, "d": 0.16, "h": 0.58, "cx": 2.05, "cz": -4.15, "yaw": 0, "y": 2.6, "box": false},
 	{"file": "shovel", "name": "Shovel", "kind": "static", "lc": Vector2(0, 0.0325), "w": 0.22, "d": 1.3, "h": 0.07, "cx": 5.48, "cz": -1, "yaw": 1.5708, "y": -1.1, "box": false, "lean": -1.31},
 	{"file": "smoke-detector", "name": "Smoke Detector", "kind": "static", "lc": Vector2(0, 0), "w": 0.18, "d": 0.18, "h": 0, "cx": 0.5, "cz": -1.25, "yaw": 0, "y": 5, "box": false},
-	{"file": "smoke-detector", "name": "Smoke Detector", "kind": "static", "lc": Vector2(0, 0), "w": 0.18, "d": 0.18, "h": 0, "cx": 0.5, "cz": -0.5, "yaw": 0, "y": 2.5, "box": false},
+	{"file": "smoke-detector", "name": "Smoke Detector", "kind": "static", "lc": Vector2(0, 0), "w": 0.18, "d": 0.18, "h": 0, "cx": 0.5, "cz": 1.6, "yaw": 0, "y": 2.5, "box": false},
 	{"file": "smoke-detector", "name": "Smoke Detector", "kind": "static", "lc": Vector2(0, 0), "w": 0.18, "d": 0.18, "h": 0, "cx": 3.5, "cz": -4.05, "yaw": 0, "y": 2.5, "box": false},
 	{"file": "smoke-detector", "name": "Smoke Detector", "kind": "static", "lc": Vector2(0, 0), "w": 0.18, "d": 0.18, "h": 0, "cx": 0.5, "cz": -2, "yaw": 0, "y": 0, "box": false},
 	{"file": "curtains", "name": "Curtains", "kind": "static", "lc": Vector2(0, 0), "w": 2.36, "d": 0.11, "h": 0, "cx": -5.84, "cz": -2, "yaw": 1.5708, "y": 0.1, "box": false},
@@ -265,8 +275,8 @@ const PIECES: Array = [
 	# the hall/archway mouth and he got completely stuck. They now
 	# sit along the East Room's south wall, east of the archway.
 	# A re-transcription must keep these two where they are.
-	{"file": "armchair", "name": "Armchair", "kind": "static", "lc": Vector2(0, 0.0275), "w": 0.95, "d": 0.88, "h": 0.95, "cx": 2.9, "cz": 1.05, "yaw": 0, "y": 0.1, "box": true},
-	{"file": "armchair", "name": "Armchair", "kind": "static", "lc": Vector2(0, 0.0275), "w": 0.95, "d": 0.88, "h": 0.95, "cx": 4.0, "cz": 1.05, "yaw": 0, "y": 0.1, "box": true},
+	{"file": "armchair", "name": "Armchair", "kind": "static", "lc": Vector2(0, 0.0275), "w": 0.95, "d": 0.88, "h": 0.95, "cx": 2.9, "cz": 1.24, "yaw": 0, "y": 0.1, "box": true},
+	{"file": "armchair", "name": "Armchair", "kind": "static", "lc": Vector2(0, 0.0275), "w": 0.95, "d": 0.88, "h": 0.95, "cx": 4.0, "cz": 1.24, "yaw": 0, "y": 0.1, "box": true},
 	{"file": "table-plant", "name": "Potted Plant", "kind": "static", "lc": Vector2(0, 0), "w": 0.46, "d": 0.48, "h": 0.61, "cx": -3.6, "cz": -2.25, "yaw": 0, "y": 0.86, "box": false},
 	{"file": "fruit-bowl", "name": "Fruit Bowl", "kind": "static", "lc": Vector2(0, 0), "w": 0.25, "d": 0.25, "h": 0.14, "cx": -4.4, "cz": -1.8, "yaw": 0, "y": 0.86, "box": false},
 	{"file": "hanging-plant", "name": "Hanging Plant", "kind": "static", "lc": Vector2(0, 0), "w": 0.27, "d": 0.24, "h": 0, "cx": -5.7, "cz": -2, "yaw": 0, "y": 2.32, "box": false},
@@ -274,12 +284,20 @@ const PIECES: Array = [
 	{"file": "hanging-plant", "name": "Hanging Plant", "kind": "static", "lc": Vector2(0, 0), "w": 0.27, "d": 0.24, "h": 0, "cx": 5.7, "cz": 2.5, "yaw": 0, "y": 2.32, "box": false},
 	{"file": "mail-pile", "name": "Mail", "kind": "static", "lc": Vector2(0, 0), "w": 0.25, "d": 0.15, "h": 0.02, "cx": 2.3, "cz": -4.05, "yaw": 0.2, "y": 1, "box": false},
 	{"file": "mugs", "name": "Mugs", "kind": "static", "lc": Vector2(0, 0), "w": 0.25, "d": 0.08, "h": 0.09, "cx": 5.5, "cz": -2.55, "yaw": 0.3, "y": 1.01, "box": false},
-	{"file": "coat-hooks", "name": "Coats", "kind": "static", "lc": Vector2(0, 0), "w": 1.07, "d": 0.11, "h": 0, "cx": 0.14, "cz": -1.2, "yaw": 1.5708, "y": 0.1, "box": false},
-	{"file": "shoes", "name": "Shoes", "kind": "static", "lc": Vector2(0, 0), "w": 0.25, "d": 0.32, "h": 0.12, "cx": 0.42, "cz": -1.2, "yaw": 1.9708, "y": 0.1, "box": false},
+	# The coats and shoes moved to the hall's west wall
+	# 2026-11-18: their React seats (x 0.14 / 0.42) hang in
+	# the stairwell opening — the model has only a stub
+	# there (the banister is Adam's to build), so the rack
+	# floated in the passage across from the basement
+	# door, which is what Adam's walkthrough flagged. On
+	# the west wall they keep their yaw and their z; the
+	# shoes sit at the rack's base, as they did.
+	{"file": "coat-hooks", "name": "Coats", "kind": "static", "lc": Vector2(0, 0), "w": 1.07, "d": 0.11, "h": 0, "cx": -0.95, "cz": -1.2, "yaw": 1.5708, "y": 0.1, "box": false},
+	{"file": "shoes", "name": "Shoes", "kind": "static", "lc": Vector2(0, 0), "w": 0.25, "d": 0.32, "h": 0.12, "cx": -0.78, "cz": -1.2, "yaw": 1.9708, "y": 0.1, "box": false},
 	{"file": "dog-bowls", "name": "Dog Bowls", "kind": "static", "lc": Vector2(0, 0), "w": 0.56, "d": 0.34, "h": 0.06, "cx": 3.5, "cz": -3.5, "yaw": 0, "y": 0.1, "box": false},
 	{"file": "trash-can", "name": "Trash Can", "kind": "static", "lc": Vector2(0, 0), "w": 0.26, "d": 0.26, "h": 0.31, "cx": 1.35, "cz": -3.45, "yaw": 0, "y": 0.1, "box": false},
 	{"file": "toiletries", "name": "Toiletries", "kind": "static", "lc": Vector2(0, 0), "w": 0.19, "d": 0.1, "h": 0.22, "cx": 0.33, "cz": -4.28, "yaw": 0, "y": 3.5, "box": false},
-	{"file": "trash-can", "name": "Trash Can", "kind": "static", "lc": Vector2(0, 0), "w": 0.26, "d": 0.26, "h": 0.31, "cx": 1.38, "cz": -4.1, "yaw": 0, "y": 2.6, "box": false},
+	{"file": "trash-can", "name": "Trash Can", "kind": "static", "lc": Vector2(0, 0), "w": 0.26, "d": 0.26, "h": 0.31, "cx": 1.22, "cz": -4.26, "yaw": 0, "y": 2.6, "box": false},
 	{"file": "clothes-pile-a", "name": "Clothes Pile", "kind": "static", "lc": Vector2(0, 0), "w": 0.55, "d": 0.44, "h": 0.11, "cx": 2.3, "cz": -3.55, "yaw": 0.7, "y": 2.6, "box": false},
 	{"file": "clothes-pile-b", "name": "Clothes Pile", "kind": "static", "lc": Vector2(0, 0), "w": 0.55, "d": 0.44, "h": 0.11, "cx": 4.35, "cz": 2.85, "yaw": 0.2, "y": 2.6, "box": false},
 	{"file": "clothes-pile-c", "name": "Clothes Pile", "kind": "static", "lc": Vector2(0, 0), "w": 0.55, "d": 0.44, "h": 0.11, "cx": -2.05, "cz": -3.3, "yaw": 1.1, "y": 2.6, "box": false},
@@ -340,7 +358,11 @@ const PROPS: Array = [
 const HAMMER_SPEC: Dictionary = {
 	"file": "claw-hammer", "name": "Claw Hammer", "kind": "item",
 	"lc": Vector2(0.0, 0.01015), "w": 0.05, "d": 0.33, "h": 0.07,
-	"local_pos": Vector3(-1.82, 0.70, 0.275), "yaw": 0.0, "box": false,
+	# Re-seated 2026-11-18: at z 0.275 the head sat flush
+	# with the drawer unit's front plane and poked out of
+	# the open box (Adam's walkthrough); deeper and lower,
+	# it lies inside the box.
+	"local_pos": Vector3(-1.82, 0.66, 0.175), "yaw": 0.0, "box": false,
 }
 
 # Look-target y spans (relative to the piece root), ported

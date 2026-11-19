@@ -70,13 +70,18 @@ func _run() -> void:
 
 	print("C4 the view toggle and the boom")
 	check(not _player.view_tp and _player.get_camera().current, "first person at spawn")
-	# The head bone is shrunk away in FP (Adam saw the inside
-	# of the skull at pitch) and restored in TP.
+	# The head stays on in both views (Adam rejected the
+	# shrunken head); the FP eye rides 0.28 ahead of a
+	# pitch pivot that itself sits 0.14 ahead of the axis
+	# (0.42 in all — the forward pivot is what keeps the
+	# eye out of the chest at steep down-pitch), and the
+	# eye pulls in when a wall is closer.
 	var skel: Skeleton3D = rig.get("_skel")
 	var head_i: int = skel.find_bone("Head")
 	await settle(5)
 	var fp_scale: float = skel.get_bone_global_pose(head_i).basis.get_scale().x
-	check(fp_scale > 0.001 and fp_scale < 0.05, "FP: the head is hidden but not degenerate (scale=%.3f)" % fp_scale)
+	check(fp_scale > 0.9, "FP: the head is on (scale=%.3f)" % fp_scale)
+	check(absf(_player.get_camera().position.z + 0.28) < 0.02, "FP: the eye rides 0.28 ahead of the pivot in the open (z=%.2f)" % _player.get_camera().position.z)
 	var ev := InputEventAction.new()
 	ev.action = "toggle_view"
 	ev.pressed = true
@@ -85,7 +90,7 @@ func _run() -> void:
 	check(_player.view_tp and _player.get_tp_camera().current, "V switched to third person")
 	await settle(5)
 	var tp_scale: float = skel.get_bone_global_pose(head_i).basis.get_scale().x
-	check(tp_scale > 0.9, "TP: the head is back (scale=%.3f)" % tp_scale)
+	check(tp_scale > 0.9, "TP: the head is on (scale=%.3f)" % tp_scale)
 	var wheel := InputEventMouseButton.new()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	wheel.pressed = true
@@ -94,6 +99,14 @@ func _run() -> void:
 	_main.call("_unhandled_input", ev)
 	await settle(3)
 	check(not _player.view_tp and _player.get_camera().current, "V switched back to first person")
+	# Face the east wall: the pivot is 0.14 ahead of the
+	# axis, so the wall is ~0.16 from the pivot and the
+	# eye pulls in off its 0.28 ride to just short of it.
+	_player.global_position = Vector3(5.6, 2.65, 1.6)
+	_player.velocity = Vector3.ZERO
+	_player.rotation.y = -PI / 2.0
+	await settle(30)
+	check(_player.get_camera().position.z > -0.20, "FP: the eye pulls in at a wall (z=%.2f)" % _player.get_camera().position.z)
 
 	print("C5 a held item rides the camera in FP, the hand in TP")
 	var skillet: Piece = null

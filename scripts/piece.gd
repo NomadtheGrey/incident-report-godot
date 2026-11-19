@@ -65,6 +65,83 @@ func _make_curio_glass() -> void:
 			dup.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
 			mi.set_surface_override_material(s, dup)
 
+# Wall-mounted pieces (the switch plates, the coat hooks)
+# were seated by eye in the React registry, and the eyes
+# were off by up to 0.12 — Adam's walkthroughs found
+# plates floating off walls and one buried in the plaster.
+# Snap the piece's back onto the wall face behind it: the
+# house's walls are axis planes, so the snap is a slide
+# along the facing axis to the closest wall tri that both
+# faces the piece (its outward normal runs with the
+# facing, so the far side of the same wall never wins)
+# and contains the piece's centre. back_offset is how far
+# behind the origin the model's back sits (the plate
+# model is centred on its origin: 0.012; back-at-zero
+# models pass 0). Returns false when no wall is in reach
+# — the piece keeps its registry seat and the caller can
+# hear about it.
+func snap_to_wall(walls: Array, back_offset: float) -> bool:
+	var f := Vector3(sin(rotation.y), 0, cos(rotation.y))
+	var back_off: float = position.dot(f) - back_offset
+	# The baked wall tris' winding points their normals
+	# INTO the solid (measured across the house), so the
+	# face on the piece's side of a box wall has n·f ≈ -1;
+	# a flat plane wall's single face can point either
+	# way. Prefer the inward-facing candidates; fall back
+	# to the others only when no inward face is in reach.
+	var best_in: float = INF
+	var best_out: float = INF
+	# Containment is probed at three heights: a plate's
+	# origin is its centre, but a floor-standing piece's
+	# origin is at its feet (the coat hooks' origin sits
+	# below the partition they hang on).
+	for probe_y in [position.y, position.y + 0.65, position.y + 1.3]:
+		for t in walls:
+			var a: Vector3 = t["a"]
+			var b: Vector3 = t["b"]
+			var c: Vector3 = t["c"]
+			var n: Vector3 = (b - a).cross(c - a)
+			if n.length() < 0.0001:
+				continue
+			n = n.normalized()
+			var facing: float = n.dot(f)
+			if absf(facing) < 0.9:
+				continue
+			var delta: float = a.dot(f) - back_off
+			if delta < -0.45 or delta > 0.06:
+				continue
+			var p: Vector3 = position + f * delta
+			p.y = probe_y
+			if not _in_tri(p, a, b, c):
+				continue
+			if facing < 0.0 and absf(delta) < absf(best_in):
+				best_in = delta
+			if facing > 0.0 and absf(delta) < absf(best_out):
+				best_out = delta
+	var best: float = best_in if best_in != INF else best_out
+	if best == INF:
+		return false
+	position += f * best
+	return true
+
+# Barycentric point-in-triangle with a small margin, so a
+# piece near a tri's diagonal edge still counts its wall.
+func _in_tri(p: Vector3, a: Vector3, b: Vector3, c: Vector3) -> bool:
+	var v0: Vector3 = b - a
+	var v1: Vector3 = c - a
+	var v2: Vector3 = p - a
+	var d00: float = v0.dot(v0)
+	var d01: float = v0.dot(v1)
+	var d11: float = v1.dot(v1)
+	var d20: float = v2.dot(v0)
+	var d21: float = v2.dot(v1)
+	var den: float = d00 * d11 - d01 * d01
+	if absf(den) < 0.000001:
+		return false
+	var v: float = (d11 * d20 - d01 * d21) / den
+	var w: float = (d00 * d21 - d01 * d20) / den
+	return v >= -0.05 and w >= -0.05 and v + w <= 1.05
+
 func _build_collider() -> void:
 	var boxes: Array = spec.get("boxes", [])
 	var has_auto: bool = spec.get("box", false)

@@ -4,7 +4,9 @@ extends SceneTree
 #   Godot --headless --script tests/test_slice2.gd
 # Aims are staged from the React drive geometry (eye 1.72,
 # centre ray): drawer from (1.45, -2.72), plate from
-# (3.0, -2.62), fan from (3.5, -3.4).
+# (3.0, -2.62), fan from (3.5, -4.05) — the fan moved
+# mid-kitchen in the 2026-11-18 walkthrough fixes, so its
+# aim stands off the run-south instead.
 
 var _failures: int = 0
 var _main: Node = null
@@ -79,7 +81,7 @@ func _run() -> void:
 	check(hammer.get_parent() == _player.get_camera(), "hammer rides the camera")
 
 	print("S4 close the drawer by its pull band")
-	await aim(Vector3(1.45, 0.1, -2.72), 0.0, -0.81)
+	await aim(Vector3(1.45, 0.1, -2.72), 0.0, -0.88)
 	check(_main.get("_look_piece") == drawer, "look target is the drawer band")
 	_main.call("_interact")
 	var closed: bool = await wait_until(func() -> bool: return drawer.open01 < 0.05, 120)
@@ -112,7 +114,7 @@ func _run() -> void:
 	check(not fan.light_on and not hood.light_on, "plate turned them off again")
 
 	print("S8 the fan's own cords")
-	await aim(Vector3(3.5, 0.1, -3.4), PI, 0.32)
+	await aim(Vector3(3.5, 0.1, -4.05), PI, 0.34)
 	check(_main.get("_look_piece") == fan, "look target is the fan (got %s)" % str(_main.get("_look_piece")))
 	_main.call("_interact")
 	check(fan.light_on and not hood.light_on, "E lit only the fan")
